@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="fill_vertical"
+    android:gravity="center_vertical"
+    android:minHeight="64dp"
+    android:id="@+id/content"
+    android:visibility="gone"
+    android:animationCache="false">
+
+  <ImageSwitcher
+      android:id="@+id/switcher_icon"
+      android:layout_marginLeft="8dp"
+      android:layout_width="35dp"
+      android:layout_height="35dp"
+      android:layout_weight="0">
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:scaleType="centerInside"/>
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:scaleType="centerInside"/>
+  </ImageSwitcher>
+
+  <TextSwitcher
+      android:id="@+id/switcher_title"
+      android:layout_marginLeft="10dp"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_weight="0">
+    <TextView
+        style="@style/ZeminNotification.Title.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    <TextView
+        style="@style/ZeminNotification.Title.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+  </TextSwitcher>
+
+  <TextSwitcher
+      android:id="@+id/switcher_text"
+      android:layout_marginLeft="10dp"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_weight="1">
+    <TextView
+        style="@style/ZeminNotification.Text.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    <TextView
+        style="@style/ZeminNotification.Text.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+  </TextSwitcher>
+
+  <TextSwitcher
+      android:id="@+id/switcher_when"
+      android:layout_marginLeft="10dp"
+      android:layout_marginRight="8dp"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_weight="0">
+    <TextView
+        style="@style/ZeminNotification.When.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    <TextView
+        style="@style/ZeminNotification.When.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+  </TextSwitcher>
+</LinearLayout>

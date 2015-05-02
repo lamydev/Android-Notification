@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+  <style name="ZeminNotification"/>
+
+  <style name="ZeminNotification.Title">
+    <item name="android:textSize">22sp</item>
+    <item name="android:textStyle">bold</item>
+    <item name="android:textColor">#455a64</item>
+    <item name="android:fadingEdge">horizontal</item>
+  </style>
+
+  <style name="ZeminNotification.Text">
+    <item name="android:textSize">18sp</item>
+    <item name="android:textColor">#999999</item>
+    <item name="android:ellipsize">none</item>
+    <item name="android:fadingEdge">horizontal</item>
+  </style>
+
+  <style name="ZeminNotification.When">
+    <item name="android:textSize">12sp</item>
+    <item name="android:textColor">#999999</item>
+  </style>
+
+  <style name="ZeminNotification.Title.Small">
+    <item name="android:textSize">22sp</item>
+    <item name="android:maxWidth">100dp</item>
+    <item name="android:singleLine">true</item>
+    <item name="android:ellipsize">marquee</item>
+    <item name="android:marqueeRepeatLimit">marquee_forever</item>
+    <item name="android:fadingEdge">horizontal</item>
+  </style>
+
+  <style name="ZeminNotification.Text.Small">
+    <item name="android:textSize">18sp</item>
+    <item name="android:singleLine">true</item>
+    <item name="android:ellipsize">marquee</item>
+    <item name="android:marqueeRepeatLimit">marquee_forever</item>
+    <item name="android:fadingEdge">horizontal</item>
+  </style>
+
+  <style name="ZeminNotification.When.Small">
+    <item name="android:textSize">12sp</item>
+  </style>
+
+</resources>
