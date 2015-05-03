@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">zemin-samples</string>
+
+  <string name="remote">remote</string>
+  <string name="local">local</string>
+  <string name="global">global</string>
+  <string name="arrival">arrival</string>
+  <string name="total">total</string>
+
+  <string name="cancelAll">cancelAll</string>
+  <string name="dismiss">dismiss</string>
+
+  <string name="change_title">title</string>
+  <string name="change_text">text</string>
+  <string name="change_color">color</string>
+  <string name="change_layout">layout</string>
+
+  <string name="zero">0</string>
+</resources>
