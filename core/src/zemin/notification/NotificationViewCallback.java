@@ -47,7 +47,7 @@ public class NotificationViewCallback implements NotificationView.Callback {
 
     @Override
     public int getDefaultContentResId() {
-        return R.layout.zemin_notification_simple_2;
+        return R.layout.notification_simple_2;
     }
 
     @Override
@@ -57,16 +57,16 @@ public class NotificationViewCallback implements NotificationView.Callback {
     @Override
     public void onContentViewChanged(NotificationView view, View contentView, int contentResId) {
 
-        if (contentResId == R.layout.zemin_notification_simple ||
-            contentResId == R.layout.zemin_notification_large_icon ||
-            contentResId == R.layout.zemin_notification_full) {
+        if (contentResId == R.layout.notification_simple ||
+            contentResId == R.layout.notification_large_icon ||
+            contentResId == R.layout.notification_full) {
 
             view.setChildViewSwitcher(SWITCHER_ICON, R.id.switcher_icon);
             view.setChildViewSwitcher(SWITCHER_TITLE, R.id.switcher_title);
             view.setChildViewSwitcher(SWITCHER_TEXT, R.id.switcher_text);
             view.setChildViewSwitcher(SWITCHER_WHEN, R.id.switcher_when);
 
-        } else if (contentResId == R.layout.zemin_notification_simple_2) {
+        } else if (contentResId == R.layout.notification_simple_2) {
 
             mViewIcon = (ImageView) contentView.findViewById(R.id.icon);
             mViewTitle = (TextView) contentView.findViewById(R.id.title);
@@ -90,9 +90,9 @@ public class NotificationViewCallback implements NotificationView.Callback {
             when = entry.whenFormatted;
         }
 
-        if (contentResId == R.layout.zemin_notification_simple ||
-            contentResId == R.layout.zemin_notification_large_icon ||
-            contentResId == R.layout.zemin_notification_full) {
+        if (contentResId == R.layout.notification_simple ||
+            contentResId == R.layout.notification_large_icon ||
+            contentResId == R.layout.notification_full) {
 
             ImageSwitcher iconSwitcher = view.getIconSwitcher();
             TextSwitcher titleSwitcher = view.getTitleSwitcher();
@@ -146,7 +146,7 @@ public class NotificationViewCallback implements NotificationView.Callback {
                 }
             }
 
-        } else if (contentResId == R.layout.zemin_notification_simple_2) {
+        } else if (contentResId == R.layout.notification_simple_2) {
             view.animateContentView();
 
             if (mViewIcon != null) {

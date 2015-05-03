@@ -100,7 +100,7 @@ public class NotificationRemoteFactory {
         if (entry.smallIconRes > 0) {
             builder.setSmallIcon(entry.smallIconRes);
         } else {
-            Log.w(TAG, "small icon not set.");
+            Log.w(TAG, "***************** small icon not set.");
         }
 
         if (entry.largeIconBitmap != null) {

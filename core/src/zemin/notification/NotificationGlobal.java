@@ -86,7 +86,7 @@ public class NotificationGlobal extends NotificationHandler {
 
         @Override
         public int getDefaultContentResId() {
-            return R.layout.zemin_notification_full;
+            return R.layout.notification_full;
         }
 
         @Override

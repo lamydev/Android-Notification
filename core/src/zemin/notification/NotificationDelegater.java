@@ -114,7 +114,7 @@ public class NotificationDelegater {
     }
 
     /**
-     * @return
+     * @return boolean
      */
     public boolean isEnabled() {
         return mEnabled;
@@ -172,7 +172,7 @@ public class NotificationDelegater {
      * retrieve notification by entryId
      *
      * @param entryId
-     * @return
+     * @return NotificationEntry
      */
     public NotificationEntry getNotification(int entryId) {
         return CENTER.getEntry(entryId);
@@ -212,7 +212,7 @@ public class NotificationDelegater {
     /**
      * to configure NotificationEffect
      *
-     * @return
+     * @return NotificationEffect
      */
     public NotificationEffect effect() {
         return CENTER.effect();
@@ -221,7 +221,7 @@ public class NotificationDelegater {
     /**
      * to configure remote view
      *
-     * @return
+     * @return NotificationRemote
      */
     public NotificationRemote remote() {
         return (NotificationRemote) CENTER.get(NotificationEntry.TARGET_REMOTE);
@@ -230,7 +230,7 @@ public class NotificationDelegater {
     /**
      * to configure local view
      *
-     * @return
+     * @return NotificationLocal
      */
     public NotificationLocal local() {
         return (NotificationLocal) CENTER.get(NotificationEntry.TARGET_LOCAL);
@@ -239,7 +239,7 @@ public class NotificationDelegater {
     /**
      * to configure global view
      *
-     * @return
+     * @return NotificationGlobal
      */
     public NotificationGlobal global() {
         return (NotificationGlobal) CENTER.get(NotificationEntry.TARGET_GLOBAL);

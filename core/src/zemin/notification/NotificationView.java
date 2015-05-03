@@ -497,7 +497,7 @@ public class NotificationView extends FrameLayout
      * @see NotificationView#SWITCHER_WHEN
      *
      * @param contentType
-     * @param switcher
+     * @param resId
      */
     public void setChildViewSwitcher(Integer contentType, int resId) {
         ChildViewSwitcher switcher = mSwitchers.get(contentType);
@@ -533,7 +533,7 @@ public class NotificationView extends FrameLayout
 
     /**
      * @param contentType
-     * @param ViewSwitcher
+     * @return ViewSwitcher
      */
     public ViewSwitcher getViewSwitcher(int contentType) {
         ChildViewSwitcher s = mSwitchers.get(SWITCHER_ICON);
@@ -709,7 +709,8 @@ public class NotificationView extends FrameLayout
     }
 
     /**
-     * dismiss
+     * dismiss, but pending notifications will still be sent to {@link NotificationListener},
+     * if {@link NotificationEntry#isSentToListener()} returns true.
      */
     public void dismiss() {
         schedule(MSG_DISMISS, 0 /* cancelAll */, 0, null, 0);
@@ -745,6 +746,9 @@ public class NotificationView extends FrameLayout
         }
     }
 
+    /**
+     * cancel all, including the pendings.
+     */
     public void onCancelAll() {
         schedule(MSG_DISMISS, 1 /* cancelAll */, 0, null, 0);
     }
