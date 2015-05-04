@@ -737,13 +737,12 @@ public class NotificationView extends FrameLayout
 
     @Override
     public void onCancel(NotificationEntry entry) {
-        // don't need to call "mNotificationHandler.onCancelFinished(entry)"
-        //
         synchronized (mEntryLock) {
             if (mEntries.contains(entry)) {
                 mEntries.remove(entry);
             }
         }
+        mNotificationHandler.onCancelFinished(entry);
     }
 
     /**

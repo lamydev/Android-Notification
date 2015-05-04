@@ -148,7 +148,7 @@ public class NotificationHandler extends Handler {
     }
 
     void onCancelRequested(NotificationEntry entry) {
-        if (entry.isSentToTarget(ID)) {
+        if (entry.isSentToTarget(ID) && !entry.isCanceled(ID)) {
             if (DBG) Log.v(TAG, "prepare to cancel - " + entry.ID);
             schedule(CANCEL, 0, 0, entry, 0);
         }
@@ -182,12 +182,11 @@ public class NotificationHandler extends Handler {
     void onCancelFinished(NotificationEntry entry) {
         if (DBG) Log.v(TAG, "cancel - " + entry.ID);
         entry.mFlag |= NotificationEntry.FLAG_CANCEL_FINISHED;
-        entry.sendToTarget(false, ID);
+        entry.mCancels |= ID;
         updateEntryState(entry);
     }
 
     void onCancelAlready(NotificationEntry entry) {
-        entry.sendToTarget(false, ID);
         onCancelFinished(entry);
         mCenter.cancel(entry);
     }

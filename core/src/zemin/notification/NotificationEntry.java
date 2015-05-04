@@ -380,6 +380,10 @@ public class NotificationEntry {
         return (mTargets & target) != 0;
     }
 
+    public boolean isCanceled(int target) {
+        return (mCancels & target) != 0;
+    }
+
     // cancel
     public void cancel() {
         synchronized (mLock) {
@@ -426,6 +430,7 @@ public class NotificationEntry {
     int mFlag;
     int mPrevFlag;
     int mTargets;
+    int mCancels;
     int mEffectConsumers;
     boolean mSendToListener;
     final Object mLock = new Object();
@@ -447,6 +452,7 @@ public class NotificationEntry {
         StringBuilder sb = new StringBuilder();
         sb.append(" Notification@").append(hashCode()).append(":").append(priority);
         sb.append(" [ targets=").append(mTargets);
+        sb.append(", cancels=").append(mCancels);
         sb.append(" ] { tag=").append(tag);
         sb.append(", id=").append(ID);
         sb.append(", whenLong=").append(whenLong);

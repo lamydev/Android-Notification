@@ -230,7 +230,8 @@ public class NotificationCenter {
                         onSendAsDefault(entry);
                     }
                 } else if ((diff & NotificationEntry.FLAG_CANCEL_FINISHED) != 0) {
-                    if (entry.mTargets == 0 || entry.mTargets != NotificationEntry.TARGET_REMOTE) {
+                    entry.mFlag &= ~NotificationEntry.FLAG_CANCEL_FINISHED;
+                    if (entry.mTargets == entry.mCancels) {
                         removeEntry(entry.ID);
                     }
                 }
