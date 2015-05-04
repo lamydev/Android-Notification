@@ -2,6 +2,15 @@
 
 A notification library for Android applications.
 
+By using this library, you can easily send notifications in different situations:
+
+* send remote/global notification when application is in background.
+* send local/global notification when application is in foreground.
+* register a `NotificationListener` for updating the badge number of notification count.
+* ...
+
+## Overview
+
 There are 3 major components:
 
 * local notification (in-layout notification)
@@ -12,20 +21,14 @@ and 1 extra component:
 
 * notification effect (ringtone, vibration)
 
-
-By using this library, you can send notifications in different situations:
-
-* send remote/global notification when application is in background.
-* send local/global notification when application is in foreground.
-* register a `NotificationListener` for updating the badge number of notification count.
-* ...
-
 Each notification can have its own layout and background. If not specified, the default layout and background will be used.
 
 If a notification is sent to more than one component, its status is synchronized between those components.
 Thus, canceling a notification in one component will trigger the cancel event in other components.
 
 ## Demo
+
+Sample code is also available in this repository.
 
 ### Local Notification
 
@@ -38,8 +41,6 @@ Thus, canceling a notification in one component will trigger the cancel event in
 ### Remote Notification
 
 ![remote demo](https://github.com/lamydev/Android-Notification/blob/master/samples/demo/remote.gif)
-
-Sample code is also available in this repository.
 
 ## Programming Guide
 
@@ -61,18 +62,27 @@ Available flags:
 * NotificationDelegater.FLAG\_GLOBAL\_NOTIFICATION
 * NotificationDelegater.FLAG\_REMOTE\_NOTIFICATION
 
+Once it has been inited, you can enable/disable a component at runtime.
+
+For example, to disable the local notification:
+
+``` java
+NotificationDelegater delegater = NotificationDelegater.getInstance();
+NotificationLocal local = delegater.local();
+local.enable(false);
+```
+
 ### Local Notification
 
 You need to add `NotificationView` to your layout.
+
 Otherwise, nothing will be present if you try to send a local notification.
 
 ``` xml
-
 <zemin.notification.NotificationView
     android:id="@+id/nv"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"/>
-
 ```
 
 Then attach it to `NotificationLocal`.
@@ -125,26 +135,46 @@ Implement this interface to listen to overall Notification status.
 
 By default, all notifications will be delivered to all listeners.
 
-#### Use Case
+Here's an example.
 
-For example, if you have a badge showing notification count, you may need register a `NotificationListener` to help keep it up-to-date.
+If you have a badge showing notification count, you may need register a `NotificationListener` to help keep it up-to-date.
+
+![badge example](https://github.com/lamydev/Android-Notification/blob/master/samples/demo/badge_example.png)
 
 ``` java
-private final NotificationListener mListener = new NotificationListener() {
+public class MainActivity extends Activity {
+
     @Override
-    public void onArrival(NotificationEntry entry) {
-        updateNotificationCount();
+    protected void onResume() {
+        super.onResume();
+
+        NotificationDelegater.getInstance().addListener(mListener);
     }
 
     @Override
-    public void onCancel(NotificationEntry entry) {
-        updateNotificationCount();
-    }
-}
+    protected void onPause() {
+        super.onPause();
 
-private void updateNotificationCount() {
-    final int count = NotificationDelegater.getInstance().getNotificationCount();
-    // refresh the TextView presenting the notification count...
+        NotificationDelegater.getInstance().removeListener(mListener);
+    }
+
+    private final NotificationListener mListener = new NotificationListener() {
+
+        @Override
+        public void onArrival(NotificationEntry entry) {
+            updateNotificationCount();
+        }
+
+        @Override
+        public void onCancel(NotificationEntry entry) {
+            updateNotificationCount();
+        }
+    }
+
+    private void updateNotificationCount() {
+        final int count = NotificationDelegater.getInstance().getNotificationCount();
+        // do something ...
+    }
 }
 ```
 
@@ -169,7 +199,7 @@ entry.setRingtone(context, resId);
 NotificationDelegater.getInstance().send(entry);
 ```
 
-## Customization
+### Customization
 
 Some sample layouts are provided in this repository.
 If you need a customized layout, you may have to implement it.
@@ -178,29 +208,29 @@ If you need a customized layout, you may have to implement it.
 
 * For customizing remote notification, you need to create a class extending `NotificationRemoteFactory`, and pass an instance to `NotificationRemote` by calling `NotificationRemote#setFactory(NotificationRemoteFactory factory)`.
 
-## Under Development
+## Coming Soon
 
 Notification panel.
 
-## Developer
+## Developers
 * Zemin Liu (lam2dev@gmail.com)
 
 Any contributions, bug fixes, and patches are welcomed. ^\_^
 
-## Apache License
+## License
 
 ```
-    Copyright (C) 2015 Zemin Liu
+Copyright (C) 2015 Zemin Liu
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
     
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-    
-        http://www.apache.org/licenses/LICENSE-2.0
-    
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ```
