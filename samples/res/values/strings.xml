@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="app_name">zemin-samples</string>
+  <string name="app_name">zemin-noti-samples</string>
 
   <string name="remote">remote</string>
   <string name="local">local</string>

@@ -99,16 +99,19 @@ public class MainActivity extends ActionBarActivity {
     private TextView mTvArrivalCount;
     private int mArrivalCount = 0;
     private Button mBtnChangeTitle;
+    private TextView mTvTitle;
     private int mTitleIdx;
     private String mTitle;
     private Button mBtnChangeText;
+    private TextView mTvText;
     private int mTextIdx;
     private String mText;
     private Button mBtnChangeColor;
+    private TextView mTvColor;
     private int mColorIdx;
     private int mColor;
-    private TextView mTvColorPresent;
     private Button mBtnChangeLayout;
+    private TextView mTvLayout;
     private int mLayoutIdx;
     private int mLayout;
 
@@ -152,9 +155,12 @@ public class MainActivity extends ActionBarActivity {
         mBtnChangeText.setOnClickListener(mOnClickListener);
         mBtnChangeColor = (Button) findViewById(R.id.btn_change_color);
         mBtnChangeColor.setOnClickListener(mOnClickListener);
-        mTvColorPresent = (TextView) findViewById(R.id.tv_color_present);
         mBtnChangeLayout = (Button) findViewById(R.id.btn_change_layout);
         mBtnChangeLayout.setOnClickListener(mOnClickListener);
+        mTvTitle = (TextView) findViewById(R.id.tv_title);
+        mTvText = (TextView) findViewById(R.id.tv_text);
+        mTvColor = (TextView) findViewById(R.id.tv_color);
+        mTvLayout = (TextView) findViewById(R.id.tv_layout);
 
         mTitle = getNextTitle();
         mText = getNextText();
@@ -179,6 +185,7 @@ public class MainActivity extends ActionBarActivity {
         if (mTitleIdx == mTitleSet.length) {
             mTitleIdx = 0;
         }
+        mTvTitle.setText(String.valueOf(mTitleIdx));
         return mTitleSet[mTitleIdx++];
     }
 
@@ -186,6 +193,7 @@ public class MainActivity extends ActionBarActivity {
         if (mTextIdx == mTextSet.length) {
             mTextIdx = 0;
         }
+        mTvText.setText(String.valueOf(mTextIdx));
         return mTextSet[mTextIdx++];
     }
 
@@ -194,7 +202,7 @@ public class MainActivity extends ActionBarActivity {
             mColorIdx = 0;
         }
         final int color = mColorSet[mColorIdx++];
-        mTvColorPresent.setBackgroundColor(color);
+        mTvColor.setBackgroundColor(color);
         return color;
     }
 
@@ -202,6 +210,7 @@ public class MainActivity extends ActionBarActivity {
         if (mLayoutIdx == mLayoutSet.length) {
             mLayoutIdx = 0;
         }
+        mTvLayout.setText(String.valueOf(mLayoutIdx));
         return mLayoutSet[mLayoutIdx++];
     }
 
