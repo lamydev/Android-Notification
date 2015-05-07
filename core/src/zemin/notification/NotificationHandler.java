@@ -22,9 +22,9 @@ import android.os.Message;
 import android.os.Looper;
 import android.util.Log;
 
-//
-// @author Zemin Liu
-//
+/**
+ * Parent class of {@link NotificationLocal}, {@link NotificationGlobal} and {@link NotificationRemote}.
+ */
 public class NotificationHandler extends Handler {
 
     public static boolean DBG;
@@ -135,6 +135,11 @@ public class NotificationHandler extends Handler {
         schedule(CANCEL_ALL, 0, 0, null, 0);
     }
 
+    void reportCanceled(NotificationEntry entry) {
+        onCancelFinished(entry);
+        mCenter.cancel(entry);
+    }
+
     void onSendRequested(NotificationEntry entry) {
         if (entry.isSentToTarget(ID)) {
             if (mEnabled) {
@@ -184,11 +189,6 @@ public class NotificationHandler extends Handler {
         entry.mFlag |= NotificationEntry.FLAG_CANCEL_FINISHED;
         entry.mCancels |= ID;
         updateEntryState(entry);
-    }
-
-    void onCancelAlready(NotificationEntry entry) {
-        onCancelFinished(entry);
-        mCenter.cancel(entry);
     }
 
     void onCancelAllFinished() {

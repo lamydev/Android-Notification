@@ -25,13 +25,12 @@ import android.os.Build;
 import android.os.Vibrator;
 import android.util.Log;
 
-// notification effects
-//
-// ** ringtone **
-// ** vibration ** (require manifest permission "android.permission.VIBRATE")
-//
-// @author Zemin Liu
-//
+/**
+ * Effects:
+ *
+ * 1) ringtone
+ * 2) vibration (require manifest permission {@link android.Manifest.permission#VIBRATE})
+ */
 public class NotificationEffect {
 
     private static final String TAG = "zemin.NotificationEffect";

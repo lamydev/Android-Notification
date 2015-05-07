@@ -22,11 +22,9 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Log;
 
-//
-// Delegater
-//
-// @author Zemin Liu
-//
+/**
+ * Delegater
+ */
 public class NotificationDelegater {
 
     private static final String TAG = "zemin.NotificationDelegater";
@@ -87,6 +85,7 @@ public class NotificationDelegater {
             NotificationGlobal.DBG =
             NotificationView.DBG =
             NotificationViewCallback.DBG =
+            NotificationRootView.DBG =
             DBG;
 
         mContext = context;

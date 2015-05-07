@@ -16,9 +16,11 @@
 
 package zemin.notification;
 
-//
-// @author Zemin Liu
-//
+/**
+ *
+ * @see NotificationDelegater#addListener
+ * @see NotificationDelegater#removeListener
+ */
 public interface NotificationListener {
 
     /**

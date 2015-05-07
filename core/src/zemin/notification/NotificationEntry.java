@@ -26,9 +26,9 @@ import android.util.Log;
 
 import java.io.File;
 
-//
-// @author Zemin Liu
-//
+/**
+ * Notification
+ */
 public class NotificationEntry {
 
     private static final String TAG = "zemin.NotificationEntry";
@@ -37,7 +37,7 @@ public class NotificationEntry {
     /**
      * default date format
      */
-    public final static String DEFAULT_DATE_FORMAT = "aHH:mm";
+    public final static String DEFAULT_DATE_FORMAT = "ahh:mm";
 
     /**
      * default priority
@@ -47,6 +47,7 @@ public class NotificationEntry {
     public final int ID;
     public String tag;
     public Priority priority;
+    public boolean ongoing;
     public int delay;
     public int contentResId;
     public int backgroundColor;
@@ -141,6 +142,18 @@ public class NotificationEntry {
      */
     public void setPriority(Priority priority) {
         this.priority = priority;
+    }
+
+    /**
+     * a on-going notification cannot be canceled by the user.
+     * (e.g. global NotificationView cannot be swiped to dismiss)
+     *
+     * default is false.
+     *
+     * @param ongoing
+     */
+    public void setOngoing(boolean ongoing) {
+        this.ongoing = ongoing;
     }
 
     /**
@@ -455,6 +468,7 @@ public class NotificationEntry {
         sb.append(", cancels=").append(mCancels);
         sb.append(" ] { tag=").append(tag);
         sb.append(", id=").append(ID);
+        sb.append(", ongoing=").append(ongoing);
         sb.append(", whenLong=").append(whenLong);
         sb.append(", whenFormatted=").append(whenFormatted);
         sb.append(", title=").append(title);

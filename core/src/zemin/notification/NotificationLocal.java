@@ -23,11 +23,9 @@ import android.view.View;
 
 import java.util.ArrayList;
 
-//
-// NotificationView handler
-//
-// @author Zemin Liu
-//
+/**
+ * Manage in-layout notification view.
+ */
 public class NotificationLocal extends NotificationHandler {
 
     public static boolean DBG;

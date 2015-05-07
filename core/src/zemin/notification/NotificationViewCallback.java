@@ -30,11 +30,9 @@ import static zemin.notification.NotificationView.SWITCHER_TITLE;
 import static zemin.notification.NotificationView.SWITCHER_TEXT;
 import static zemin.notification.NotificationView.SWITCHER_WHEN;
 
-//
-// NotificationView callback
-//
-// @author Zemin Liu
-//
+/**
+ * Default implementation of NotificationView callback.
+ */
 public class NotificationViewCallback implements NotificationView.Callback {
 
     public static boolean DBG;
@@ -100,8 +98,9 @@ public class NotificationViewCallback implements NotificationView.Callback {
             TextSwitcher whenSwitcher = view.getWhenSwitcher();
             NotificationEntry lastEntry = view.getLastEntry();
             boolean titleChanged = true;
+            boolean contentChanged = view.isContentLayoutChanged();
 
-            if (!view.isContentLayoutChanged() && title != null &&
+            if (!contentChanged && title != null &&
                 lastEntry != null && title.equals(lastEntry.title)) {
                 titleChanged = false;
             }

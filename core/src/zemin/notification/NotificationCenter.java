@@ -28,17 +28,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 
-//
-// Notification center
-//
-// 1) Notification remote
-// 2) Notification local
-// 3) Notification global
-// 4) Notification listener
-// 5) Notification effect
-//
-// @author Zemin Liu
-//
+/**
+ * Manage the following components:
+ *
+ * {@link NotificationLocal}
+ * {@link NotificationGlobal}
+ * {@link NotificationRemote}
+ * {@link NotificationListener}
+ * {@link NotificationEffect}
+ */
 public class NotificationCenter {
 
     private static final String TAG = "zemin.NotificationCenter";

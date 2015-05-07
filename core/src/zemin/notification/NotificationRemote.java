@@ -26,10 +26,9 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.util.Log;
 
-// handle remote notifications (StatusBar Notification)
-//
-// @author Zemin Liu
-//
+/**
+ * Manage status-bar notification.
+ */
 public class NotificationRemote extends NotificationHandler {
 
     public static boolean DBG;
@@ -117,7 +116,7 @@ public class NotificationRemote extends NotificationHandler {
     private void onCanceledRemotely(int entryId) {
         NotificationEntry entry = getEntry(entryId);
         if (entry != null) {
-            onCancelAlready(entry);
+            reportCanceled(entry);
         } else {
             Log.e(TAG, "failed to cancel. notification entry not found for id=" + entryId);
         }

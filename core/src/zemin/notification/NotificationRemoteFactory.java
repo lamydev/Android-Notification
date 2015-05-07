@@ -24,10 +24,14 @@ import android.os.Bundle;
 import android.util.Log;
 import android.support.v4.app.NotificationCompat;
 
-// NotificationRemote factory
-//
-// @author Zemin Liu
-//
+/**
+ * A factory for handling status-bar notification - {@link android.app.Notification}.
+ *
+ * This is the default implementation.
+ *
+ * Subclasses can override {@link getStatusBarNotification(NotificationEntry, int)} to
+ * suppport a customized layout.
+ */
 public class NotificationRemoteFactory {
 
     public static boolean DBG;
@@ -123,6 +127,8 @@ public class NotificationRemoteFactory {
             entryId, entry.activityClass, entry.extra, entry.autoCancel);
         builder.setContentIntent(contentIntent);
         builder.setAutoCancel(entry.autoCancel);
+
+        builder.setOngoing(entry.ongoing);
 
         if (entry.useSystemEffect) {
             int defaults = 0;
