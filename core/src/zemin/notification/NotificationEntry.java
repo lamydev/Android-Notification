@@ -146,7 +146,7 @@ public class NotificationEntry {
 
     /**
      * a on-going notification cannot be canceled by the user.
-     * (e.g. global NotificationView cannot be swiped to dismiss)
+     * (e.g. user gesture cannot cause NotificationView to be dismissed)
      *
      * default is false.
      *
