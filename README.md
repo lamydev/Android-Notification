@@ -2,24 +2,26 @@
 
 A notification library for Android applications.
 
-By using this library, you can easily send notifications in different situations:
+By using this library, you can easily manage your notifications.
 
 * send remote/global notification when application is in background.
 * send local/global notification when application is in foreground.
 * register a `NotificationListener` for updating the badge number of notification count.
+* display a `NotificationBoard` with a list of current notifications.
 * ...
 
 ## Overview
 
 There are 3 major components:
 
-* local notification (in-layout notification)
-* global notification (floating notification)
-* remote notification (Statusbar notification)
+* Notification Local (managing in-layout notifications)
+* Notification Global (managing floating notifications)
+* Notification Remote (managing status-bar notifications)
 
-and 1 extra component:
+and 2 minor components:
 
-* notification effect (ringtone, vibration)
+* Notification Board (holding a notification list)
+* Notification Effect (managing ringtone, vibration, ...)
 
 Each notification can have its own layout and background. If not specified, the default layout and background will be used.
 
@@ -30,15 +32,19 @@ Thus, canceling a notification in one component will trigger the cancel event in
 
 Sample code is also available in this repository.
 
-### Local Notification
+#### Notification Local
 
 ![local demo](https://github.com/lamydev/Android-Notification/blob/master/samples/demo/local.gif)
 
-### Global Notification
+#### Notification Global
 
 ![global demo](https://github.com/lamydev/Android-Notification/blob/master/samples/demo/global.gif)
 
-### Remote Notification
+#### Notification Board
+
+![global demo](https://github.com/lamydev/Android-Notification/blob/master/samples/demo/board.gif)
+
+#### Notification Remote
 
 ![remote demo](https://github.com/lamydev/Android-Notification/blob/master/samples/demo/remote.gif)
 
@@ -47,36 +53,45 @@ Sample code is also available in this repository.
 ### Compatibility
 * minSdkVersion: 11
 
-### Initialization
+### Gradle
 
-You need to tell `NotificationDelegater` the major features you want to use.
+Android-Notification library is pushed to Maven Central as a AAR, so you just need to
+declare the following dependency to your `build.gradle`.
 
-``` java
-NotificationDelegater delegater = NotificationDelegater.getInstance();
-delegater.init(context, flags);
+``` xml
+dependencies {
+    compile 'com.github.lamydev:android-notification:2.0'
+}
 ```
 
-Available flags:
+### Initialization
 
-* NotificationDelegater.FLAG\_LOCAL\_NOTIFICATION
-* NotificationDelegater.FLAG\_GLOBAL\_NOTIFICATION
-* NotificationDelegater.FLAG\_REMOTE\_NOTIFICATION
+You need to tell `NotificationDelegater` the major components you want to use.
+
+``` java
+NotificationDelegater.initialize(context, components);
+```
+
+Available components:
+
+* NotificationDelegater.LOCAL
+* NotificationDelegater.GLOBAL
+* NotificationDelegater.REMOTE
 
 Once it has been inited, you can enable/disable a component at runtime.
 
 For example, to disable the local notification:
 
 ``` java
-NotificationDelegater delegater = NotificationDelegater.getInstance();
-NotificationLocal local = delegater.local();
-local.enable(false);
+NotificationLocal local = NotificationDelegater.getInstance().local();
+local.setEnabled(false);
 ```
 
-### Local Notification
+### Notification Local (in-layout notifications)
 
 You need to add `NotificationView` to your layout.
 
-Otherwise, nothing will be present if you try to send a local notification.
+Otherwise, nothing will be presented if you try to send a local notification.
 
 ``` xml
 <zemin.notification.NotificationView
@@ -88,48 +103,132 @@ Otherwise, nothing will be present if you try to send a local notification.
 Then attach it to `NotificationLocal`.
 
 ``` java
-NotificationDelegater delegater = NotificationDelegater.getInstance();
-NotificationLocal local = delegater.local();
+NotificationLocal local = NotificationDelegater.getInstance().local();
 NotificationView view = (NotificationView) findViewById(R.id.nv);
 local.setView(view);
 ```
 
-Now it is ready to send such local notification.
+To send a local notification:
 
 ``` java
-NotificationEntry entry = NotificationEntry.create();
-entry.sendToLocalView(true);
-// ...
-NotificationDelegater.getInstance().send(entry);
+NotificationBuilder.V1 builder = NotificationBuilder.local()
+    .setIconDrawable(icon)
+    .setTitle(title)
+    .setText(text);
+    
+NotificationDelegater delegater = NotificationDelegater.getInstance();
+delegater.send(builder.getNotification());
 ```
 
-### Global Notification
+#### Customization
+
+* Refer to the JavaDoc of `NotificationView`.
+* Refer to the JavaDoc of `NotificationGlobal`.
+* Implement `NotificationViewCallback` or `NotificationLocal#ViewCallback`.
+  Pass an instance to `NotificationView#setCallback(NotificationViewCallback cb)`.
+
+### Notification Global (floating notifications)
 
 For global notification, you don't need to attach any `NotificationView`.
 Instead, it will do that for you.
 
-However, once it has been fired, it is displayed on top of any screen and remains visible for its specified duration, regardless of the visibility of you application's main screen.
+Once it has been fired, it is displayed on top of any screen and remains visible for its specified duration, regardless of the visibility of you application's main screen.
+
+By default, all features are disabled. You need to manually enable them.
 
 ``` java
-NotificationEntry entry = NotificationEntry.create();
-entry.sendToGlobalView(true);
-// ...
-NotificationDelegater.getInstance().send(entry);
+NotificationGlobal global = NotificationDelegater.getInstance().global();
+global.setViewEnabled(true);
 ```
 
-### Remote Notification
+To send a global notification:
+
+``` java
+NotificationBuilder.V1 builder = NotificationBuilder.global()
+    .setIconDrawable(icon)
+    .setTitle(title)
+    .setText(text);
+    
+NotificationDelegater delegater = NotificationDelegater.getInstance();
+delegater.send(builder.getNotification());
+```
+
+#### Customization
+
+* Refer to the JavaDoc of `NotificationView`.
+* Refer to the JavaDoc of `NotificationGlobal`.
+* Implement `NotificationViewCallback` or `NotificationGlobal#ViewCallback`.
+  Pass an instance to `NotificationView#setCallback(NotificationViewCallback cb)`.
+
+### Notification Board (notification list)
+
+A notification board shows a list of currently delivered notifications.
+
+Initially, the board is hidden.  You can open it by:
+
+* invoking method: `NotificationBoard#open(boolean anim)`
+* user gesture: touches inside a rectangular area on the screen and performs a scroll down action.
+
+By default, user gesture is not supported since the touch area is not defined.
+
+To specify a touch area, you can call `NotificationBoard#setInitialTouchArea(int l, int t, int r, int b)`.
+
+#### Floating board
+
+It is managed by the `NotificationGlobal`, so the board feature needs to be enabled before you can use it.
+
+``` java
+NotificationGlobal global = NotificationDelegater.getInstance().global();
+global.setBoardEnabled(true);
+```
+
+In this case, the initial touch area is automatically set by `NotificationRootView`.
+
+* if `NotificationView` is displayed, the initial touch area of the board would be the same as the view's dimension.
+* if `NotificationView` is not displayed, the initial touch area would be reset to 0.
+
+Thus, the board can be opened only when the `NotificationView` is displayed, and the user scrolls it down.
+
+#### In-layout board
+
+You just need to simply add `NotificationBoard` to your layout.... without attaching it to any
+notification handler, such as `NotificationLocal`, `NotificationGlobal`.
+
+``` xml
+<zemin.notification.NotificationBoard
+    android:id="@+id/board"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"/>
+```
+
+#### Customization
+
+* Refer to the JavaDoc of `NotificationBoard`.
+* Implement `NotificationBoardCallback`.
+  Pass an instance to `NotificationBoard#setCallback(NotificationBoardCallback cb)`.
+
+### Notification Remote (status-bar notifications)
 
 This is eventually a StatusBar Notification.
 
 ``` java
-NotificationEntry entry = NotificationEntry.create();
-entry.sendToRemote(true);
-entry.setSmallIconResource(drawable);
-// ...
-NotificationDelegater.getInstance().send(entry);
+NotificationBuilder.V2 builder = NotificationBuilder.remote()
+    .setSmallIconResource(icon)
+    .setTicker(tickerText)
+    .setTitle(title)
+    .setText(text);
+    
+NotificationDelegater delegater = NotificationDelegater.getInstance();
+delegater.send(builder.getNotification());
 ```
 
-### NotificationListener
+#### Customization
+
+* Refer to the JavaDoc of `NotificationRemote`.
+* Implement `NotificationRemoteCallback`.
+  Pass an instance to `NotificationRemote#setCallback`.
+
+### Notification Listener
 
 Implement this interface to listen to overall Notification status.
 
@@ -185,37 +284,28 @@ By default, notification effect is disabled for all components.
 To enable it for a specific component, for example, for global notification:
 
 ``` java
-NotificationDelegater delegater = NotificationDelegater.getInstance();
-NotificationGlobal global = delegater.global();
+NotificationGlobal global = NotificationDelegater.getInstance().global();
 global.enableEffect(true);
 ```
 
 Then you can play a ringtone when sending a global notification:
 
 ``` java
-NotificationEntry entry = NotificationEntry.create();
-entry.sendToGlobalView(true);
-entry.setRingtone(context, resId);
-NotificationDelegater.getInstance().send(entry);
+NotificationBuilder.V1 builder = NotificationBuilder.global()
+    .setIconDrawable(icon)
+    .setTitle(title)
+    .setText(text)
+    .setPlayRingtone(true)
+    .setRingtone(context, resId);
+    
+NotificationDelegater delegater = NotificationDelegater.getInstance();
+delegater.send(builder.getNotification());
 ```
-
-### Customization
-
-Some sample layouts are provided in this repository.
-If you need a customized layout, you may have to implement it.
-
-* For customizing notification view, you need to create a class implementing `NotificationView#Callback`, and pass an instance to `NotificationView` by calling `NotificationView#setCallback(Callback cb)`.
-
-* For customizing remote notification, you need to create a class extending `NotificationRemoteFactory`, and pass an instance to `NotificationRemote` by calling `NotificationRemote#setFactory(NotificationRemoteFactory factory)`.
-
-## Coming Soon
-
-Notification panel.
 
 ## Developers
 * Zemin Liu (lam2dev@gmail.com)
 
-Any contributions, bug fixes, and patches are welcomed. ^\_^
+Any questions, contributions, bug fixes, and patches are welcomed. ^\_^
 
 ## License
 
