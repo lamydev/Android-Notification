@@ -32,10 +32,10 @@ public class MainApplication extends Application {
 
     private void initNotification() {
 
-        NotificationDelegater.getInstance().init(
+        NotificationDelegater.initialize(
             this,
-            NotificationDelegater.FLAG_REMOTE_NOTIFICATION |
-            NotificationDelegater.FLAG_LOCAL_NOTIFICATION |
-            NotificationDelegater.FLAG_GLOBAL_NOTIFICATION);
+            NotificationDelegater.LOCAL |
+            NotificationDelegater.GLOBAL |
+            NotificationDelegater.REMOTE);
     }
 }

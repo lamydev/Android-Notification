@@ -105,23 +105,6 @@
       </LinearLayout>
 
       <LinearLayout
-          android:layout_marginTop="10dp"
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content">
-        <TextView
-            android:id="@+id/tv_arrival_count"
-            android:text="@string/zero"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-        <TextView
-            android:text="@string/arrival"
-            android:textSize="25sp"
-            android:layout_marginLeft="10dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-      </LinearLayout>
-
-      <LinearLayout
           android:layout_marginTop="20dp"
           android:layout_width="wrap_content"
           android:layout_height="wrap_content">
@@ -147,80 +130,16 @@
     </LinearLayout>
 
     <LinearLayout
-        android:layout_marginTop="15dp"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
-      <LinearLayout
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:orientation="vertical">
-        <Button
-            android:id="@+id/btn_change_title"
-            android:text="@string/change_title"
-            android:textAllCaps="false"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-        <TextView
-            android:id="@+id/tv_title"
-            android:gravity="center"
-            android:layout_gravity="center_horizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-      </LinearLayout>
-
-      <LinearLayout
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:orientation="vertical">
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
       <Button
-          android:id="@+id/btn_change_text"
-          android:text="@string/change_text"
+          android:id="@+id/btn_board"
+          android:text="@string/board"
+          android:textSize="20sp"
           android:textAllCaps="false"
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"/>
-        <TextView
-            android:id="@+id/tv_text"
-            android:gravity="center"
-            android:layout_gravity="center_horizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-      </LinearLayout>
-
-      <LinearLayout
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:orientation="vertical">
-        <Button
-            android:id="@+id/btn_change_color"
-            android:text="@string/change_color"
-            android:textAllCaps="false"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-        <TextView
-            android:id="@+id/tv_color"
-            android:gravity="center"
-            android:layout_gravity="center_horizontal"
-            android:layout_width="40dp"
-            android:layout_height="20dp"/>
-      </LinearLayout>
-
-      <LinearLayout
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:orientation="vertical">
-        <Button
-            android:id="@+id/btn_change_layout"
-            android:text="@string/change_layout"
-            android:textAllCaps="false"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-        <TextView
-            android:id="@+id/tv_layout"
-            android:gravity="center"
-            android:layout_gravity="center_horizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-      </LinearLayout>
     </LinearLayout>
   </LinearLayout>
 

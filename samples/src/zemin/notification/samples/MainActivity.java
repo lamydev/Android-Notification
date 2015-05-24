@@ -26,6 +26,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.support.v7.app.ActionBarActivity;
 
+import zemin.notification.NotificationBoard;
+import zemin.notification.NotificationBoardCallback;
+import zemin.notification.NotificationBuilder;
 import zemin.notification.NotificationDelegater;
 import zemin.notification.NotificationEntry;
 import zemin.notification.NotificationGlobal;
@@ -33,12 +36,184 @@ import zemin.notification.NotificationListener;
 import zemin.notification.NotificationLocal;
 import zemin.notification.NotificationRemote;
 import zemin.notification.NotificationView;
+import zemin.notification.NotificationViewCallback;
 
 //
 public class MainActivity extends ActionBarActivity {
 
     private static final String TAG = "zemin.Notification.samples";
     private static final boolean DBG = true;
+
+    private NotificationDelegater mDelegater;
+    private NotificationRemote mRemote;
+    private NotificationLocal mLocal;
+    private NotificationGlobal mGlobal;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        initView();
+
+        mDelegater = NotificationDelegater.getInstance();
+        mRemote = mDelegater.remote();
+        mLocal = mDelegater.local();
+        mGlobal = mDelegater.global();
+
+        // enable global view && board
+        mGlobal.setViewEnabled(true);
+        mGlobal.setBoardEnabled(true);
+
+        // attach local NotificationView
+        mLocal.setView((NotificationView) findViewById(R.id.nv));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // add listener
+        mDelegater.addListener(mNotificationListener);
+
+        // update notification count
+        mTvTotalCount.setText(String.valueOf(mDelegater.getNotificationCount()));
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        // remove listener
+        mDelegater.removeListener(mNotificationListener);
+    }
+
+    private final NotificationListener mNotificationListener = new NotificationListener() {
+            @Override
+            public void onArrival(NotificationEntry entry) {
+                updateNotificationCount(entry);
+            }
+
+            @Override
+            public void onCancel(NotificationEntry entry) {
+                updateNotificationCount(entry);
+            }
+        };
+
+    private void updateNotificationCount(NotificationEntry entry) {
+        if (entry.isSentToRemote()) {
+            mTvRemoteCount.setText(String.valueOf(mRemote.getNotificationCount()));
+        }
+        if (entry.isSentToLocalView()) {
+            mTvLocalCount.setText(String.valueOf(mLocal.getNotificationCount()));
+        }
+        if (entry.isSentToGlobalView()) {
+            mTvGlobalCount.setText(String.valueOf(mGlobal.getNotificationCount()));
+        }
+        mTvTotalCount.setText(String.valueOf(mDelegater.getNotificationCount()));
+    }
+
+    private final View.OnClickListener mOnClickListener = new View.OnClickListener() {
+            public void onClick(View view) {
+
+                switch (view.getId()) {
+                case R.id.btn_remote_send: {
+                    // send to remote
+                    String title = getNextTitle();
+                    String text = getNextText();
+
+                    NotificationBuilder.V2 builder = NotificationBuilder.remote()
+                        .setSmallIconResource(R.drawable.ic_launcher)
+                        .setTicker(title + ": " + text)
+                        .setTitle(title)
+                        .setText(text);
+
+                    mDelegater.send(builder.getNotification());
+
+                } break;
+
+                case R.id.btn_remote_cancel: {
+                    // cancel all remote
+                    mRemote.cancelAll();
+                } break;
+
+                case R.id.btn_local_send: {
+                    // send to local view
+
+                    NotificationBuilder.V1 builder = NotificationBuilder.local()
+                        .setBackgroundColor(getNextColor())
+                        .setLayoutId(getNextLayout())
+                        .setIconDrawable(getResources().getDrawable(R.drawable.ic_launcher))
+                        .setTitle(getNextTitle())
+                        .setText(getNextText());
+
+                    mDelegater.send(builder.getNotification());
+
+                } break;
+
+                case R.id.btn_local_cancel: {
+                    // cancel all local
+                    mLocal.cancelAll();
+                } break;
+
+                case R.id.btn_local_dismiss: {
+                    // dismiss view
+                    mLocal.dismissView();
+                } break;
+
+                case R.id.btn_global_send: {
+                    // send to global view
+
+                    NotificationBuilder.V1 builder = NotificationBuilder.global()
+                        .setIconDrawable(getResources().getDrawable(R.drawable.ic_launcher))
+                        .setTitle(getNextTitle())
+                        .setText(getNextText());
+
+                    mDelegater.send(builder.getNotification());
+
+                } break;
+
+                case R.id.btn_global_cancel: {
+                    // cancel all global
+                    mGlobal.cancelAll();
+                } break;
+
+                case R.id.btn_global_dismiss: {
+                    // dismiss view, but not cancel the rest
+                    mGlobal.dismissView();
+                } break;
+
+                case R.id.btn_total_cancel: {
+                    // cancel all
+                    mDelegater.cancelAll();
+                } break;
+
+                case R.id.btn_board: {
+                    // open notification board
+                    mGlobal.openBoard();
+                    break;
+                }
+                }
+            }
+        };
+
+
+    private Button mBtnRemoteSend;
+    private Button mBtnRemoteCancel;
+    private TextView mTvRemoteCount;
+    private Button mBtnLocalSend;
+    private Button mBtnLocalCancel;
+    private Button mBtnLocalDismiss;
+    private TextView mTvLocalCount;
+    private Button mBtnGlobalSend;
+    private Button mBtnGlobalCancel;
+    private Button mBtnGlobalDismiss;
+    private TextView mTvGlobalCount;
+    private Button mBtnTotalCancel;
+    private TextView mTvTotalCount;
+    private int mTitleIdx;
+    private int mTextIdx;
+    private int mColorIdx;
+    private int mLayoutIdx;
+    private Button mBtnBoard;
 
     private static final String[] mTitleSet = new String[] {
         "Guess Who",
@@ -59,9 +234,7 @@ public class MainActivity extends ActionBarActivity {
     private static final int[] mColorSet = new int[] {
         0,
         0xffc0ca33,
-        0,
         0xff8bc34a,
-        0,
         0xff00938d,
         0xff607d8b,
     };
@@ -70,57 +243,37 @@ public class MainActivity extends ActionBarActivity {
     private static final int[] mLayoutSet = new int[] {
         0,
         zemin.notification.R.layout.notification_full,
-        0,
         zemin.notification.R.layout.notification_simple,
         zemin.notification.R.layout.notification_large_icon,
-        0,
-        0,
         zemin.notification.R.layout.notification_simple_2,
     };
 
-    private NotificationDelegater mDelegater;
-    private NotificationRemote mRemote;
-    private NotificationLocal mLocal;
-    private NotificationGlobal mGlobal;
+    private String getNextTitle() {
+        if (mTitleIdx == mTitleSet.length) {
+            mTitleIdx = 0;
+        }
+        return mTitleSet[mTitleIdx++];
+    }
 
-    private Button mBtnRemoteSend;
-    private Button mBtnRemoteCancel;
-    private TextView mTvRemoteCount;
-    private Button mBtnLocalSend;
-    private Button mBtnLocalCancel;
-    private Button mBtnLocalDismiss;
-    private TextView mTvLocalCount;
-    private Button mBtnGlobalSend;
-    private Button mBtnGlobalCancel;
-    private Button mBtnGlobalDismiss;
-    private TextView mTvGlobalCount;
-    private Button mBtnTotalCancel;
-    private TextView mTvTotalCount;
-    private TextView mTvArrivalCount;
-    private int mArrivalCount = 0;
-    private Button mBtnChangeTitle;
-    private TextView mTvTitle;
-    private int mTitleIdx;
-    private String mTitle;
-    private Button mBtnChangeText;
-    private TextView mTvText;
-    private int mTextIdx;
-    private String mText;
-    private Button mBtnChangeColor;
-    private TextView mTvColor;
-    private int mColorIdx;
-    private int mColor;
-    private Button mBtnChangeLayout;
-    private TextView mTvLayout;
-    private int mLayoutIdx;
-    private int mLayout;
+    private String getNextText() {
+        if (mTextIdx == mTextSet.length) {
+            mTextIdx = 0;
+        }
+        return mTextSet[mTextIdx++];
+    }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    private int getNextColor() {
+        if (mColorIdx == mColorSet.length) {
+            mColorIdx = 0;
+        }
+        return mColorSet[mColorIdx++];
+    }
 
-        initView();
-        initNotification();
+    private int getNextLayout() {
+        if (mLayoutIdx == mLayoutSet.length) {
+            mLayoutIdx = 0;
+        }
+        return mLayoutSet[mLayoutIdx++];
     }
 
     private void initView() {
@@ -148,185 +301,7 @@ public class MainActivity extends ActionBarActivity {
         mBtnTotalCancel = (Button) findViewById(R.id.btn_total_cancel);
         mBtnTotalCancel.setOnClickListener(mOnClickListener);
         mTvTotalCount = (TextView) findViewById(R.id.tv_total_count);
-        mTvArrivalCount = (TextView) findViewById(R.id.tv_arrival_count);
-        mBtnChangeTitle = (Button) findViewById(R.id.btn_change_title);
-        mBtnChangeTitle.setOnClickListener(mOnClickListener);
-        mBtnChangeText = (Button) findViewById(R.id.btn_change_text);
-        mBtnChangeText.setOnClickListener(mOnClickListener);
-        mBtnChangeColor = (Button) findViewById(R.id.btn_change_color);
-        mBtnChangeColor.setOnClickListener(mOnClickListener);
-        mBtnChangeLayout = (Button) findViewById(R.id.btn_change_layout);
-        mBtnChangeLayout.setOnClickListener(mOnClickListener);
-        mTvTitle = (TextView) findViewById(R.id.tv_title);
-        mTvText = (TextView) findViewById(R.id.tv_text);
-        mTvColor = (TextView) findViewById(R.id.tv_color);
-        mTvLayout = (TextView) findViewById(R.id.tv_layout);
-
-        mTitle = getNextTitle();
-        mText = getNextText();
-        mColor = getNextColor();
-        mLayout = getNextLayout();
+        mBtnBoard = (Button) findViewById(R.id.btn_board);
+        mBtnBoard.setOnClickListener(mOnClickListener);
     }
-
-    private void initNotification() {
-        mDelegater = NotificationDelegater.getInstance();
-        mRemote = mDelegater.remote();
-        mLocal = mDelegater.local();
-        mGlobal = mDelegater.global();
-
-        // add NotificationListener
-        mDelegater.addListener(mNotificationListener);
-
-        // set local NotificationView
-        mLocal.setView((NotificationView) findViewById(R.id.nv));
-    }
-
-    private String getNextTitle() {
-        if (mTitleIdx == mTitleSet.length) {
-            mTitleIdx = 0;
-        }
-        mTvTitle.setText(String.valueOf(mTitleIdx));
-        return mTitleSet[mTitleIdx++];
-    }
-
-    private String getNextText() {
-        if (mTextIdx == mTextSet.length) {
-            mTextIdx = 0;
-        }
-        mTvText.setText(String.valueOf(mTextIdx));
-        return mTextSet[mTextIdx++];
-    }
-
-    private int getNextColor() {
-        if (mColorIdx == mColorSet.length) {
-            mColorIdx = 0;
-        }
-        final int color = mColorSet[mColorIdx++];
-        mTvColor.setBackgroundColor(color);
-        return color;
-    }
-
-    private int getNextLayout() {
-        if (mLayoutIdx == mLayoutSet.length) {
-            mLayoutIdx = 0;
-        }
-        mTvLayout.setText(String.valueOf(mLayoutIdx));
-        return mLayoutSet[mLayoutIdx++];
-    }
-
-    private final NotificationListener mNotificationListener = new NotificationListener() {
-            @Override
-            public void onArrival(NotificationEntry entry) {
-                mArrivalCount++;
-                updateNotificationCount(entry);
-            }
-
-            @Override
-            public void onCancel(NotificationEntry entry) {
-                mArrivalCount--;
-                updateNotificationCount(entry);
-            }
-        };
-
-    private void updateNotificationCount(NotificationEntry entry) {
-        if (entry.isSentToRemote()) {
-            mTvRemoteCount.setText(String.valueOf(mRemote.getNotificationCount()));
-        }
-        if (entry.isSentToLocalView()) {
-            mTvLocalCount.setText(String.valueOf(mLocal.getNotificationCount()));
-        }
-        if (entry.isSentToGlobalView()) {
-            mTvGlobalCount.setText(String.valueOf(mGlobal.getNotificationCount()));
-        }
-        mTvTotalCount.setText(String.valueOf(mDelegater.getNotificationCount()));
-        mTvArrivalCount.setText(String.valueOf(mArrivalCount));
-    }
-
-    private final View.OnClickListener mOnClickListener = new View.OnClickListener() {
-            public void onClick(View view) {
-
-                switch (view.getId()) {
-                case R.id.btn_remote_send: {
-                    // send to remote
-                    NotificationEntry entry = NotificationEntry.create();
-                    entry.sendToRemote(true);
-                    entry.setSmallIconResource(R.drawable.ic_launcher);
-                    entry.setTitle(mTitle);
-                    entry.setText(mText);
-                    mDelegater.send(entry);
-                } break;
-
-                case R.id.btn_remote_cancel: {
-                    // cancel all remote
-                    mRemote.cancelAll();
-                } break;
-
-                case R.id.btn_local_send: {
-                    // send to local view
-                    NotificationEntry entry = NotificationEntry.create();
-                    entry.sendToLocalView(true);
-                    entry.setBackgroundColor(mColor);
-                    entry.setContentResId(mLayout);
-                    entry.setIconDrawable(getResources().getDrawable(R.drawable.ic_launcher));
-                    entry.setTitle(mTitle);
-                    entry.setText(mText);
-                    mDelegater.send(entry);
-                } break;
-
-                case R.id.btn_local_cancel: {
-                    // cancel all local
-                    mLocal.cancelAll();
-                } break;
-
-                case R.id.btn_local_dismiss: {
-                    // dismiss view
-                    mLocal.dismissView();
-                } break;
-
-                case R.id.btn_global_send: {
-                    // send to global view
-                    NotificationEntry entry = NotificationEntry.create();
-                    entry.sendToGlobalView(true);
-                    entry.setBackgroundColor(mColor);
-                    entry.setContentResId(mLayout);
-                    entry.setIconDrawable(getResources().getDrawable(R.drawable.ic_launcher));
-                    entry.setTitle(mTitle);
-                    entry.setText(mText);
-                    mDelegater.send(entry);
-                } break;
-
-                case R.id.btn_global_cancel: {
-                    // cancel all global
-                    mGlobal.cancelAll();
-                } break;
-
-                case R.id.btn_global_dismiss: {
-                    // dismiss view, but not cancel the rest
-                    mGlobal.dismissView();
-                } break;
-
-                case R.id.btn_total_cancel: {
-                    // cancel all
-                    mDelegater.cancelAll();
-                } break;
-
-                case R.id.btn_change_title: {
-                    mTitle = getNextTitle();
-                } break;
-
-                case R.id.btn_change_text: {
-                    mText = getNextText();
-                } break;
-
-                case R.id.btn_change_color: {
-                    mColor = getNextColor();
-                } break;
-
-                case R.id.btn_change_layout: {
-                    mLayout = getNextLayout();
-                } break;
-
-                }
-            }
-        };
 }
