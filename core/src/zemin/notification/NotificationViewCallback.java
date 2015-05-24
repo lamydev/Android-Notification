@@ -25,149 +25,135 @@ import android.widget.ImageView;
 import android.widget.TextSwitcher;
 import android.widget.TextView;
 
-import static zemin.notification.NotificationView.SWITCHER_ICON;
-import static zemin.notification.NotificationView.SWITCHER_TITLE;
-import static zemin.notification.NotificationView.SWITCHER_TEXT;
-import static zemin.notification.NotificationView.SWITCHER_WHEN;
+import zemin.notification.NotificationView.ChildView;
 
 /**
- * Default implementation of NotificationView callback.
+ * Callback for {@link NotificationView}. This is the default implementation.
  */
-public class NotificationViewCallback implements NotificationView.Callback {
+public class NotificationViewCallback {
 
-    public static boolean DBG;
     private static final String TAG = "zemin.NotificationViewCallback";
+    public static boolean DBG;
 
-    private ImageView mViewIcon;
-    private TextView mViewTitle;
-    private TextView mViewText;
-    private TextView mViewWhen;
-
-    @Override
-    public int getDefaultContentResId() {
-        return R.layout.notification_simple_2;
+    /**
+     * Called only once after this callback is set.
+     *
+     * @param view
+     */
+    public void onViewSetup(NotificationView view) {
+        view.setCornerRadius(8.0f);
+        view.setContentMargin(50, 50, 50, 50);
+        view.setShadowEnabled(true);
     }
 
-    @Override
-    public void onSetupView(NotificationView view) {
+    /**
+     * Called to get the default layoutId.
+     *
+     * @param view
+     * @return int
+     */
+    public int getContentViewDefaultLayoutId(NotificationView view) {
+        return R.layout.notification_full;
     }
 
-    @Override
-    public void onContentViewChanged(NotificationView view, View contentView, int contentResId) {
+    /**
+     * Called when content view is changed. All child-views were cleared due the
+     * change of content view. You need to re-setup the associated child-views.
+     *
+     * @param view
+     * @param contentView
+     * @param layoutId
+     */
+    public void onContentViewChanged(NotificationView view, View contentView, int layoutId) {
 
-        if (contentResId == R.layout.notification_simple ||
-            contentResId == R.layout.notification_large_icon ||
-            contentResId == R.layout.notification_full) {
+        if (layoutId == R.layout.notification_simple ||
+            layoutId == R.layout.notification_large_icon ||
+            layoutId == R.layout.notification_full) {
 
-            view.setChildViewSwitcher(SWITCHER_ICON, R.id.switcher_icon);
-            view.setChildViewSwitcher(SWITCHER_TITLE, R.id.switcher_title);
-            view.setChildViewSwitcher(SWITCHER_TEXT, R.id.switcher_text);
-            view.setChildViewSwitcher(SWITCHER_WHEN, R.id.switcher_when);
+            view.setChildViewSwitcher(ChildView.ICON, R.id.switcher_icon);
+            view.setChildViewSwitcher(ChildView.TITLE, R.id.switcher_title);
+            view.setChildViewSwitcher(ChildView.TEXT, R.id.switcher_text);
+            view.setChildViewSwitcher(ChildView.WHEN, R.id.switcher_when);
 
-        } else if (contentResId == R.layout.notification_simple_2) {
+        } else if (layoutId == R.layout.notification_simple_2) {
 
-            mViewIcon = (ImageView) contentView.findViewById(R.id.icon);
-            mViewTitle = (TextView) contentView.findViewById(R.id.title);
-            mViewText = (TextView) contentView.findViewById(R.id.text);
-            mViewWhen = (TextView) contentView.findViewById(R.id.when);
+            view.setChildView(ChildView.ICON, R.id.icon);
+            view.setChildView(ChildView.TITLE, R.id.title);
+            view.setChildView(ChildView.TEXT, R.id.text);
+            view.setChildView(ChildView.WHEN, R.id.when);
         }
     }
 
-    @Override
-    public void onShowNotification(NotificationView view, NotificationEntry entry, int contentResId) {
+    /**
+     * Called when a notification is being displayed. This is the place to update
+     * the user interface of child-views for the new notification.
+     *
+     * @param view
+     * @param contentView
+     * @param entry
+     * @param layoutId
+     */
+    public void onShowNotification(NotificationView view, View contentView, NotificationEntry entry, int layoutId) {
 
         final Drawable icon = entry.iconDrawable;
         final CharSequence title = entry.title;
         final CharSequence text = entry.text;
-        CharSequence when = null;
+        final CharSequence when = entry.showWhen ? entry.whenFormatted : null;
 
-        if (entry.showWhen) {
-            if (entry.whenFormatted == null) {
-                entry.setWhen(null, entry.whenLong > 0L ? entry.whenLong : System.currentTimeMillis());
-            }
-            when = entry.whenFormatted;
+        boolean titleChanged = true;
+        boolean contentChanged = view.isContentLayoutChanged();
+        NotificationEntry lastEntry = view.getLastNotification();
+
+        if (layoutId == R.layout.notification_simple_2) {
+            view.getContentViewSwitcher().start();
         }
 
-        if (contentResId == R.layout.notification_simple ||
-            contentResId == R.layout.notification_large_icon ||
-            contentResId == R.layout.notification_full) {
-
-            ImageSwitcher iconSwitcher = view.getIconSwitcher();
-            TextSwitcher titleSwitcher = view.getTitleSwitcher();
-            TextSwitcher textSwitcher = view.getTextSwitcher();
-            TextSwitcher whenSwitcher = view.getWhenSwitcher();
-            NotificationEntry lastEntry = view.getLastEntry();
-            boolean titleChanged = true;
-            boolean contentChanged = view.isContentLayoutChanged();
-
-            if (!contentChanged && title != null &&
-                lastEntry != null && title.equals(lastEntry.title)) {
-                titleChanged = false;
-            }
-
-            if (iconSwitcher != null) {
-                if (icon != null) {
-                    iconSwitcher.setVisibility(View.VISIBLE);
-                    if (titleChanged) {
-                        iconSwitcher.setImageDrawable(icon);
-                    }
-                } else {
-                    iconSwitcher.setVisibility(View.INVISIBLE);
-                }
-            }
-
-            if (titleSwitcher != null) {
-                if (title != null && !title.equals("")) {
-                    titleSwitcher.setVisibility(View.VISIBLE);
-                    if (titleChanged) {
-                        titleSwitcher.setText(title);
-                    }
-                } else {
-                    titleSwitcher.setVisibility(View.INVISIBLE);
-                }
-            }
-
-            if (textSwitcher != null) {
-                if (text != null) {
-                    textSwitcher.setVisibility(View.VISIBLE);
-                    textSwitcher.setText(text);
-                } else {
-                    textSwitcher.setVisibility(View.INVISIBLE);
-                }
-            }
-
-            if (whenSwitcher != null) {
-                if (when != null) {
-                    whenSwitcher.setVisibility(View.VISIBLE);
-                    whenSwitcher.setText(when);
-                } else {
-                    whenSwitcher.setVisibility(View.INVISIBLE);
-                }
-            }
-
-        } else if (contentResId == R.layout.notification_simple_2) {
-            view.animateContentView();
-
-            if (mViewIcon != null) {
-                mViewIcon.setImageDrawable(icon);
-            }
-
-            if (mViewTitle != null) {
-                mViewTitle.setText(title);
-            }
-
-            if (mViewText != null) {
-                mViewText.setText(text);
-            }
-
-            if (mViewWhen != null) {
-                if (when != null) {
-                    mViewWhen.setVisibility(View.VISIBLE);
-                    mViewWhen.setText(when);
-                } else {
-                    mViewWhen.setVisibility(View.INVISIBLE);
-                }
-            }
+        if (!contentChanged && title != null &&
+            lastEntry != null && title.equals(lastEntry.title)) {
+            titleChanged = false;
         }
+
+        if (icon != null) {
+            view.showChildView(ChildView.ICON);
+            if (titleChanged) {
+                view.setChildViewImageDrawable(ChildView.ICON, icon);
+            }
+        } else {
+            view.hideChildView(ChildView.ICON);
+        }
+
+        if (title != null) {
+            view.showChildView(ChildView.TITLE);
+            if (titleChanged) {
+                view.setChildViewText(ChildView.TITLE, title);
+            }
+        } else {
+            view.hideChildView(ChildView.TITLE);
+        }
+
+        if (text != null) {
+            view.showChildView(ChildView.TEXT);
+            view.setChildViewText(ChildView.TEXT, text);
+        } else {
+            view.hideChildView(ChildView.TEXT);
+        }
+
+        if (when != null) {
+            view.showChildView(ChildView.WHEN);
+            view.setChildViewText(ChildView.WHEN, when);
+        } else {
+            view.hideChildView(ChildView.WHEN);
+        }
+    }
+
+    /**
+     * Called when the view has been clicked.
+     *
+     * @param view
+     * @param contentView
+     * @param entry
+     * @return boolean true, if handled.
+     */
+    public void onClickContentView(NotificationView view, View contentView, NotificationEntry entry) {
     }
 }

@@ -24,51 +24,101 @@ import android.view.View;
 import java.util.ArrayList;
 
 /**
- * Manage in-layout notification view.
+ * In-layout notification view.
  */
 public class NotificationLocal extends NotificationHandler {
 
+    public static final String SIMPLE_NAME = "Local";
     public static boolean DBG;
+
+    /**
+     * Implementaiton of {@link NotificationViewCallback} for in-layout {@link NotificationView}.
+     */
+    public static class ViewCallback extends NotificationViewCallback {
+
+        @Override
+        public int getContentViewDefaultLayoutId(NotificationView view) {
+            return R.layout.notification_simple_2;
+        }
+
+        @Override
+        public void onViewSetup(NotificationView view) {
+            // nothing.
+        }
+    }
 
     private NotificationView mView;
 
     /* package */ NotificationLocal(Context context, Looper looper) {
-        super(context, NotificationEntry.TARGET_LOCAL, looper);
+        super(context, NotificationDelegater.LOCAL, looper);
     }
 
+    /**
+     * Set notification view.
+     *
+     * @param view
+     */
     public void setView(NotificationView view) {
+        view.initialize(this);
         mView = view;
-        mView.setNotificationHandler(this);
     }
 
+    /**
+     * Set callback for notification view.
+     *
+     * @param cb
+     */
+    public void setViewCallback(NotificationViewCallback cb) {
+        if (mView != null) {
+            mView.setCallback(cb);
+        }
+    }
+
+    /**
+     * Enable/disable notification view.
+     *
+     * @param enable
+     */
+    public void setViewEnabled(boolean enable) {
+        if (mView != null) {
+            mView.setViewEnabled(enable);
+        }
+    }
+
+    /**
+     * Get notification view.
+     *
+     * @param NotificationView
+     */
     public NotificationView getView() {
         return mView;
     }
 
+    /**
+     * Dismiss notification view.
+     */
     public void dismissView() {
-        mView.dismiss();
-    }
-
-    public View findViewById(int resId) {
-        return mView.findViewById(resId);
-    }
-
-    public boolean hasViewCallback() {
-        return mView.hasCallback();
-    }
-
-    public void setViewCallback(NotificationView.Callback cb) {
-        mView.setCallback(cb);
+        if (mView != null) {
+            mView.dismiss();
+        }
     }
 
     @Override
     protected void onCancel(NotificationEntry entry) {
-        mView.onCancel(entry);
+        if (mView != null) {
+            mView.onCancel(entry);
+        } else {
+            onCancelFinished(entry);
+        }
     }
 
     @Override
     protected void onCancelAll() {
-        mView.onCancelAll();
+        if (mView != null) {
+            mView.onCancelAll();
+        } else {
+            onCancelAllFinished();
+        }
     }
 
     @Override
@@ -79,16 +129,18 @@ public class NotificationLocal extends NotificationHandler {
             return;
         }
 
-        if (mView.getParent() == null) {
-            throw new IllegalStateException("NotificationView should have a parent.");
+        if (!mView.hasCallback()) {
+            if (DBG) Log.v(TAG, "set default NotificationViewCallback.");
+            mView.setCallback(new ViewCallback());
         }
 
-        if (!mView.hasCallback()) {
-            mView.setCallback(DEFAULT_VIEWCALLBACK);
+        if (!mView.isViewEnabled()) {
+            if (DBG) Log.v(TAG, "NotificationView is currently disabled.");
         }
 
         mView.onArrival(entry);
     }
 
-    private final NotificationView.Callback DEFAULT_VIEWCALLBACK = new NotificationViewCallback();
+    @Override public String toSimpleString() { return SIMPLE_NAME; }
+    @Override public String toString() { return SIMPLE_NAME; }
 }

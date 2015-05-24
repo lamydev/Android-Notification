@@ -8,7 +8,7 @@ dependencies {
     compile 'com.android.support:appcompat-v7:22.0.0'
 }
 
-project.group = 'com.zemin.android'
+project.group = 'com.github.lamydev'
 
 android {
 

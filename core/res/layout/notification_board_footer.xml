@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
 /*
  * Copyright (C) 2015 Zemin Liu
  *
@@ -13,29 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+-->
 
-package zemin.notification;
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="fill_parent">
 
-/**
- * Listener used to propagate events indicating when notifications
- * are delivered and/or canceled.
- *
- * @see NotificationDelegater#addListener
- * @see NotificationDelegater#removeListener
- */
-public interface NotificationListener {
+    <ImageView
+        android:id="@+id/clear"
+        android:src="@drawable/clear_button"
+        android:scaleType="fitXY"
+        android:visibility="gone"
+        android:layout_marginRight="10dp"
+        android:layout_gravity="right|center"
+        android:layout_width="20dp"
+        android:layout_height="20dp"/>
 
-    /**
-     * called when a notification arrives.
-     *
-     * @param entry
-     */
-    void onArrival(NotificationEntry entry);
-
-    /**
-     * called when a notification is canceled.
-     *
-     * @param entry
-     */
-    void onCancel(NotificationEntry entry);
-}
+</FrameLayout>

@@ -23,46 +23,51 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.util.Log;
+import android.view.View;
 
 import java.io.File;
 
 /**
- * Notification
+ * Notification. You can also use {@link NotificationBuilder} to create {@link NotificationEntry} objects.
  */
 public class NotificationEntry {
 
     private static final String TAG = "zemin.NotificationEntry";
     public static boolean DBG;
 
+    public static final int INVALID = -1;
+
     /**
      * default date format
      */
-    public final static String DEFAULT_DATE_FORMAT = "ahh:mm";
+    public static final String DEFAULT_DATE_FORMAT = "ahh:mm";
 
     /**
      * default priority
      */
-    public final static Priority DEFAULT_PRIORITY = Priority.LOW;
+    public static final Priority DEFAULT_PRIORITY = Priority.LOW;
 
     public final int ID;
     public String tag;
     public Priority priority;
     public boolean ongoing;
     public int delay;
-    public int contentResId;
+    public int layoutId;
     public int backgroundColor;
+    public int backgroundAlpha = INVALID;
     public int smallIconRes;
     public Bitmap largeIconBitmap;
     public Drawable iconDrawable;
+    public CharSequence tickerText;
     public CharSequence title;
     public CharSequence text;
     public boolean showWhen = true;
     public long whenLong;
     public CharSequence whenFormatted;
     public boolean useSystemEffect = true;
-    public boolean useRingtone = true;
+    public boolean playRingtone = true;
     public Uri ringtoneUri;
-    public boolean useVibrate = true;
+    public boolean useVibration = true;
     public long[] vibratePattern;
     public int vibrateRepeat;
     public long vibrateTime;
@@ -70,53 +75,44 @@ public class NotificationEntry {
     public Object obj;
     public Class activityClass;
     public boolean autoCancel = true;
+    public View.OnClickListener onClickListener;
 
     /**
-     * factory
-     *
-     * @return NotificationEntry
+     * Creator.
      */
     public static NotificationEntry create() {
         return new NotificationEntry(genId());
     }
 
     /**
-     * send this notification to StatusBar.
-     *
-     * default is false.
+     * Send this notification to StatusBar.
      *
      * @param send
      */
     public void sendToRemote(boolean send) {
-        sendToTarget(send, TARGET_REMOTE);
+        sendToTarget(send, NotificationDelegater.REMOTE);
     }
 
     /**
-     * send this notification to NotifiationView.
-     *
-     * default is false.
+     * Send this notification to {@link NotifiationView} managed by {@link NotificationLocal}.
      *
      * @param send
      */
     public void sendToLocalView(boolean send) {
-        sendToTarget(send, TARGET_LOCAL);
+        sendToTarget(send, NotificationDelegater.LOCAL);
     }
 
     /**
-     * send this notification to NotificationView.
-     *
-     * default is false.
+     * Send this notification to {@link NotificationView} managed by {@link NotificationGlobal}.
      *
      * @param send
      */
     public void sendToGlobalView(boolean send) {
-        sendToTarget(send, TARGET_GLOBAL);
+        sendToTarget(send, NotificationDelegater.GLOBAL);
     }
 
     /**
-     * send this notification to NotificationListener.
-     *
-     * default is true.
+     * Send this notification to {@link NotificationListener}. The default is true.
      *
      * @param send
      */
@@ -125,7 +121,7 @@ public class NotificationEntry {
     }
 
     /**
-     * could be null.
+     * Set tag.
      *
      * @param tag
      */
@@ -134,9 +130,11 @@ public class NotificationEntry {
     }
 
     /**
-     * a Notification with higher priority will display first.
+     * A Notification with higher priority will be displayed first.
      *
-     * default is low.
+     * only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
      *
      * @param priority
      */
@@ -145,10 +143,8 @@ public class NotificationEntry {
     }
 
     /**
-     * a on-going notification cannot be canceled by the user.
+     * A on-going notification cannot be canceled by the user.
      * (e.g. user gesture cannot cause NotificationView to be dismissed)
-     *
-     * default is false.
      *
      * @param ongoing
      */
@@ -157,7 +153,7 @@ public class NotificationEntry {
     }
 
     /**
-     * delay this notification.
+     * Set delay before this notification get delivered.
      *
      * @param ms
      */
@@ -166,20 +162,20 @@ public class NotificationEntry {
     }
 
     /**
-     * each Notification can have its own layout different from others.
-     *
-     * if 0, default layout will be used.
+     * Set layout resource for customizing the user interface. If 0, default layout will be used.
      *
      * @param resId
      */
-    public void setContentResId(int resId) {
-        this.contentResId = resId;
+    public void setLayoutId(int resId) {
+        this.layoutId = resId;
     }
 
     /**
-     * each Notification can have its own background color different from others.
+     * Set background color. If 0, default background color will be used.
      *
-     * if 0, default background color will be used.
+     * Only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
      *
      * @param color
      */
@@ -188,6 +184,21 @@ public class NotificationEntry {
     }
 
     /**
+     * Set opacity of the background. The default is 0xff.
+     *
+     * Only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
+     * @param alpha [0 - 255]
+     */
+    public void setBackgroundAlpha(int alpha) {
+        this.backgroundAlpha = alpha;
+    }
+
+    /**
+     * Set whether the timestamp set with {@link #setWhen} is shown.
+     *
      * @param show
      */
     public void setShowWhen(boolean show) {
@@ -195,6 +206,8 @@ public class NotificationEntry {
     }
 
     /**
+     * Set a timestamp pertaining to this notification.
+     *
      * @param when
      */
     public void setWhen(long when) {
@@ -202,6 +215,12 @@ public class NotificationEntry {
     }
 
     /**
+     * Set a timestamp pertaining to this notification.
+     *
+     * Only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
      * @param when
      */
     public void setWhen(CharSequence when) {
@@ -209,6 +228,12 @@ public class NotificationEntry {
     }
 
     /**
+     * Set a timestamp pertaining to this notification.
+     *
+     * Only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
      * @param format
      * @param when
      */
@@ -218,27 +243,54 @@ public class NotificationEntry {
     }
 
     /**
-     * @param icon
+     * Set small icon resource.
+     *
+     * @param resId
      */
-    public void setSmallIconResource(int icon) {
-        this.smallIconRes = icon;
+    public void setSmallIconResource(int resId) {
+        this.smallIconRes = resId;
     }
 
     /**
-     * @param icon
+     * Set large icon bitmap.
+     *
+     * Only used for:
+     * @see NotificationRemote
+     *
+     * @param bitmap
      */
-    public void setLargeIconBitmap(Bitmap icon) {
-        this.largeIconBitmap = icon;
+    public void setLargeIconBitmap(Bitmap bitmap) {
+        this.largeIconBitmap = bitmap;
     }
 
     /**
-     * @param icon
+     * Set icon drawable.
+     *
+     * Only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
+     * @param drawable
      */
-    public void setIconDrawable(Drawable icon) {
-        this.iconDrawable = icon;
+    public void setIconDrawable(Drawable drawable) {
+        this.iconDrawable = drawable;
     }
 
     /**
+     * Set the text that is displayed in the status-bar when the notification first arrives.
+     *
+     * Only used for:
+     * @see NotificationRemote
+     *
+     * @param tickerText
+     */
+    public void setTicker(CharSequence tickerText) {
+        this.tickerText = tickerText;
+    }
+
+    /**
+     * Set notification title.
+     *
      * @param title
      */
     public void setTitle(CharSequence title) {
@@ -246,6 +298,8 @@ public class NotificationEntry {
     }
 
     /**
+     * Set notification text.
+     *
      * @param text
      */
     public void setText(CharSequence text) {
@@ -253,12 +307,13 @@ public class NotificationEntry {
     }
 
     /**
-     * only for {@link NotificationRemote}.
+     * Set whether to use system effect. Only for {@link NotificationRemote}. The default is true.
      *
-     * if true, effects will be controlled by the system.
-     * if false, effects will be handled by {@link NotificationEffect}.
+     * If true, effects will be controlled by the system.
+     * If false, effects will be handled by {@link NotificationEffect}.
      *
-     * default is true.
+     * Only used for:
+     * @see NotificationRemote
      *
      * @param use
      */
@@ -267,15 +322,17 @@ public class NotificationEntry {
     }
 
     /**
-     * enable/disable the ringtone
+     * Set whether to play ringtone.
      *
-     * @param use
+     * @param play
      */
-    public void setUseRingtone(boolean use) {
-        this.useRingtone = use;
+    public void setPlayRingtone(boolean play) {
+        this.playRingtone = play;
     }
 
     /**
+     * Set ringtone resource.
+     *
      * @param context
      * @param resId
      */
@@ -287,6 +344,8 @@ public class NotificationEntry {
     }
 
     /**
+     * Set ringtone uri.
+     *
      * @param uri
      */
     public void setRingtone(Uri uri) {
@@ -296,6 +355,8 @@ public class NotificationEntry {
     }
 
     /**
+     * Set ringtone file path.
+     *
      * @param filepath
      */
     public void setRingtone(String filepath) {
@@ -310,26 +371,34 @@ public class NotificationEntry {
     }
 
     /**
-     * enable/disable vibration
+     * Set whether to use vibration.
      *
      * @param use
      */
-    public void setUseVibrate(boolean use) {
-        this.useVibrate = use;
+    public void setUseVibration(boolean use) {
+        this.useVibration = use;
     }
 
     /**
+     * Set vibration pattern.
+     *
      * @param pattern
      * @param repeat
      */
     public void setVibrate(long[] pattern, int repeat) {
-        if (pattern != null && repeat >= 0) {
+        if (pattern != null) {
             this.vibratePattern = pattern;
             this.vibrateRepeat = repeat;
         }
     }
 
     /**
+     * Set vibration period.
+     *
+     * Only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
      * @param ms
      */
     public void setVibrate(long ms) {
@@ -339,6 +408,8 @@ public class NotificationEntry {
     }
 
     /**
+     * Set metadata.
+     *
      * @param extra
      */
     public void setExtra(Bundle extra) {
@@ -346,6 +417,12 @@ public class NotificationEntry {
     }
 
     /**
+     * Set extra object.
+     *
+     * Only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
      * @param obj
      */
     public void setObject(Object obj) {
@@ -353,31 +430,51 @@ public class NotificationEntry {
     }
 
     /**
+     * Set activity class. Activity will be launched when the user touches it.
+     *
+     * Only used for:
+     * @see NotificationRemote
+     *
      * @param activityClass
      */
-    public void setActivityClass(Class activityClass) {
+    public void setActivityClass(Class<?> activityClass) {
         this.activityClass = activityClass;
     }
 
     /**
+     * Set whether to cancel the notification automatically when the user touches it.
+     *
      * @param autoCancel
      */
     public void setAutoCancel(boolean autoCancel) {
         this.autoCancel = autoCancel;
     }
 
+    /**
+     * Set an object of {@link View#OnClickListener} which will be invoked when the user clicks on it.
+     *
+     * Only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
+     * @param l
+     */
+    public void setOnClickListener(View.OnClickListener l) {
+        this.onClickListener = l;
+    }
+
     // ==========================================
 
     public boolean isSentToRemote() {
-        return isSentToTarget(TARGET_REMOTE);
+        return isSentToTarget(NotificationDelegater.REMOTE);
     }
 
     public boolean isSentToLocalView() {
-        return isSentToTarget(TARGET_LOCAL);
+        return isSentToTarget(NotificationDelegater.LOCAL);
     }
 
     public boolean isSentToGlobalView() {
-        return isSentToTarget(TARGET_GLOBAL);
+        return isSentToTarget(NotificationDelegater.GLOBAL);
     }
 
     public boolean isSentToListener() {
@@ -435,11 +532,6 @@ public class NotificationEntry {
     static final int FLAG_REQUEST_CANCEL     = 0x00000010;
     static final int FLAG_CANCEL_FINISHED    = 0x00000020;
 
-    // targets
-    static final int TARGET_REMOTE           = 0x00000001;
-    static final int TARGET_LOCAL            = 0x00000002;
-    static final int TARGET_GLOBAL           = 0x00000004;
-
     int mFlag;
     int mPrevFlag;
     int mTargets;
@@ -460,12 +552,34 @@ public class NotificationEntry {
     private static int sID = 0;
     private static int genId() { return sID++; }
 
+    public static void appendComponentName(StringBuilder sb, int components) {
+        boolean comma = false;
+        if ((components & NotificationDelegater.LOCAL) != 0) {
+            comma = true;
+            sb.append(NotificationLocal.SIMPLE_NAME);
+        }
+        if ((components & NotificationDelegater.GLOBAL) != 0) {
+            if (comma) {
+                sb.append(",");
+            }
+            comma = true;
+            sb.append(NotificationGlobal.SIMPLE_NAME);
+        }
+        if ((components & NotificationDelegater.REMOTE) != 0) {
+            if (comma) {
+                sb.append(",");
+            }
+            sb.append(NotificationRemote.SIMPLE_NAME);
+        }
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(" Notification@").append(hashCode()).append(":").append(priority);
-        sb.append(" [ targets=").append(mTargets);
-        sb.append(", cancels=").append(mCancels);
+        sb.append(" [ targets="); appendComponentName(sb, mTargets);
+        sb.append(", cancels="); appendComponentName(sb, mCancels);
+        sb.append(", listener=").append(mSendToListener);
         sb.append(" ] { tag=").append(tag);
         sb.append(", id=").append(ID);
         sb.append(", ongoing=").append(ongoing);
@@ -474,6 +588,7 @@ public class NotificationEntry {
         sb.append(", title=").append(title);
         sb.append(", text=").append(text);
         sb.append(", backgroundColor=").append(backgroundColor);
+        sb.append(", backgroundAlpha=").append(backgroundAlpha);
         sb.append(", activityClass=").append(activityClass);
         sb.append(", extra=").append(extra);
         sb.append(", obj=").append(obj);

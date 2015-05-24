@@ -31,23 +31,25 @@ public class NotificationDelegater {
     public static boolean DBG;
 
     /**
-     * support sending remote notifications (such as StatusBar Notification).
+     * Support local (in-layout) notifications.
      */
-    public static final int FLAG_REMOTE_NOTIFICATION  = 0x00000001;
+    public static final int LOCAL  = 0x00000001;
 
     /**
-     * support sending local notifications (such as NotificationView in a Activity's layout).
+     * Support global (floating) notifications.
      */
-    public static final int FLAG_LOCAL_NOTIFICATION   = 0x00000002;
+    public static final int GLOBAL = 0x00000002;
 
     /**
-     * support sending global notifications (such as floating NotificationView).
+     * Support remote (status-bar) notifications.
      */
-    public static final int FLAG_GLOBAL_NOTIFICATION  = 0x00000004;
+    public static final int REMOTE = 0x00000004;
 
 
     /**
-     * @return the singleton instance of NotificationDelegater.
+     * Get the singleton instance.
+     *
+     * @return NotificationDelegater
      */
     public static NotificationDelegater getInstance() {
         synchronized (NotificationDelegater.class) {
@@ -58,61 +60,28 @@ public class NotificationDelegater {
     }
 
     /**
-     * initialize
+     * Initialization.
      *
-     * @see NotificationDelegater#FLAG_REMOTE_NOTIFICATION
-     * @see NotificationDelegater#FLAG_LOCAL_NOTIFICATION
-     * @see NotificationDelegater#FLAG_GLOBAL_NOTIFICATION
+     * @see NotificationDelegater#LOCAL
+     * @see NotificationDelegater#GLOBAL
+     * @see NotificationDelegater#REMOTE
      *
      * @param context
-     * @param flags
+     * @param components
      */
-    public void init(Context context, int flags) {
-        if (CENTER != null)
+    public static void initialize(Context context, int components) {
+        NotificationDelegater delegater = getInstance();
+        if (delegater.center() != null)
             throw new IllegalStateException("NotificationDelegater already init.");
 
-        Log.i(TAG, "Notification delegater init");
-
-        // debug
-        DBG = (context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-        NotificationCenter.DBG =
-            NotificationEffect.DBG =
-            NotificationEntry.DBG =
-            NotificationHandler.DBG =
-            NotificationRemote.DBG =
-            NotificationRemoteFactory.DBG =
-            NotificationLocal.DBG =
-            NotificationGlobal.DBG =
-            NotificationView.DBG =
-            NotificationViewCallback.DBG =
-            NotificationRootView.DBG =
-            DBG;
-
-        mContext = context;
-        CENTER = new NotificationCenter(context);
-
-        // effect
-        NotificationEffect effect = CENTER.effect();
-        effect.setRingtoneResource(R.raw.fallbackring);
-        effect.setVibrateTime(300L);
-
-        // remote
-        if ((flags & FLAG_REMOTE_NOTIFICATION) != 0) {
-            CENTER.register(new NotificationRemote(mContext, getMyLooper()));
-        }
-
-        // local
-        if ((flags & FLAG_LOCAL_NOTIFICATION) != 0) {
-            CENTER.register(new NotificationLocal(mContext, getMyLooper()));
-        }
-
-        // global
-        if ((flags & FLAG_GLOBAL_NOTIFICATION) != 0) {
-            CENTER.register(new NotificationGlobal(mContext, getMyLooper()));
-        }
+        delegater.setContext(context);
+        delegater.initComponents(components);
+        Log.i(TAG, "Notification delegater initialize");
     }
 
     /**
+     * Whether notification is disabled globally.
+     *
      * @return boolean
      */
     public boolean isEnabled() {
@@ -120,9 +89,11 @@ public class NotificationDelegater {
     }
 
     /**
-     * enable/disable notification globally
+     * Enable/disable notification globally.
+     *
+     * @param enable
      */
-    public void enable(boolean enable) {
+    public void setEnabled(boolean enable) {
         if (enable && !mEnabled) {
             if (DBG) Log.d(TAG, "Notification is now enabled.");
             mEnabled = true;
@@ -134,7 +105,7 @@ public class NotificationDelegater {
     }
 
     /**
-     * send notification
+     * Send notification.
      *
      * @param entry
      */
@@ -143,32 +114,32 @@ public class NotificationDelegater {
     }
 
     /**
-     * cancel notification by entryId
+     * Cancel notification by its id.
      *
      * @param entryId
      */
     public void cancel(int entryId) {
-        CENTER.cancel(entryId);
+        if (mEnabled) CENTER.cancel(entryId);
     }
 
     /**
-     * cancel notification
+     * Cancel notification.
      *
      * @param entry
      */
     public void cancel(NotificationEntry entry) {
-        CENTER.cancel(entry);
+        if (mEnabled) CENTER.cancel(entry);
     }
 
     /**
-     * cancel all notifications
+     * Cancel all notifications.
      */
     public void cancelAll() {
-        CENTER.cancelAll();
+        if (mEnabled) CENTER.cancelAll();
     }
 
     /**
-     * retrieve notification by entryId
+     * Get notification by its id.
      *
      * @param entryId
      * @return NotificationEntry
@@ -178,7 +149,7 @@ public class NotificationDelegater {
     }
 
     /**
-     * retrieve current notification count
+     * Get current notification count.
      *
      * @return int
      */
@@ -187,6 +158,8 @@ public class NotificationDelegater {
     }
 
     /**
+     * Add listener whick will be invoked when a notification arrives or get canceled.
+     *
      * @param listener
      */
     public void addListener(NotificationListener listener) {
@@ -194,6 +167,8 @@ public class NotificationDelegater {
     }
 
     /**
+     * Remove listener.
+     *
      * @param listener
      */
     public void removeListener(NotificationListener listener) {
@@ -201,15 +176,16 @@ public class NotificationDelegater {
     }
 
     /**
-     * enable/disable notification effect globally
+     * Enable/disable notification effect globally.
      *
+     * @param enable
      */
     public void enableEffect(boolean enable) {
-        CENTER.effect().enable(enable);
+        CENTER.effect().setEnabled(enable);
     }
 
     /**
-     * to configure NotificationEffect
+     * Get the singleton object of NotificationEffect.
      *
      * @return NotificationEffect
      */
@@ -218,38 +194,91 @@ public class NotificationDelegater {
     }
 
     /**
-     * to configure remote view
+     * Get the singleton object of NotificationRemote.
      *
      * @return NotificationRemote
      */
     public NotificationRemote remote() {
-        return (NotificationRemote) CENTER.get(NotificationEntry.TARGET_REMOTE);
+        return (NotificationRemote) CENTER.get(REMOTE);
     }
 
     /**
-     * to configure local view
+     * Get the singleton object of NotificationLocal.
      *
      * @return NotificationLocal
      */
     public NotificationLocal local() {
-        return (NotificationLocal) CENTER.get(NotificationEntry.TARGET_LOCAL);
+        return (NotificationLocal) CENTER.get(LOCAL);
     }
 
     /**
-     * to configure global view
+     * Get the singleton object of NotificationGlobal.
      *
      * @return NotificationGlobal
      */
     public NotificationGlobal global() {
-        return (NotificationGlobal) CENTER.get(NotificationEntry.TARGET_GLOBAL);
+        return (NotificationGlobal) CENTER.get(GLOBAL);
     }
 
-    private NotificationCenter CENTER;
-    /* package */ NotificationCenter center() { return CENTER; }
+    /**
+     * Enable/disable debug log.
+     *
+     * @param debug
+     */
+    public static void debug(boolean debug) {
+        NotificationCenter.DBG =
+            NotificationEffect.DBG =
+            NotificationBuilder.DBG =
+            NotificationEntry.DBG =
+            NotificationHandler.DBG =
+            NotificationRemote.DBG =
+            NotificationRemoteCallback.DBG =
+            NotificationLocal.DBG =
+            NotificationGlobal.DBG =
+            NotificationView.DBG =
+            NotificationViewCallback.DBG =
+            NotificationRootView.DBG =
+            NotificationBoard.DBG =
+            NotificationBoardCallback.DBG =
+            DBG = debug;
+    }
 
     private Context mContext;
     private boolean mEnabled = true;
     private HandlerThread mHT;
+    private NotificationCenter CENTER;
+
+    /* package */ NotificationCenter center() { return CENTER; }
+
+    private void setContext(Context context) {
+        mContext = context;
+    }
+
+    private void initComponents(int components) {
+        CENTER = new NotificationCenter(mContext);
+
+        // effect
+        NotificationEffect effect = CENTER.effect();
+        effect.setRingtoneResource(R.raw.fallbackring);
+        effect.setVibrateTime(300L);
+
+        // remote
+        if ((components & REMOTE) != 0) {
+            CENTER.register(new NotificationRemote(mContext, getMyLooper()));
+        }
+
+        // local
+        if ((components & LOCAL) != 0) {
+            CENTER.register(new NotificationLocal(mContext, getMyLooper()));
+        }
+
+        // global
+        if ((components & GLOBAL) != 0) {
+            CENTER.register(new NotificationGlobal(mContext, getMyLooper()));
+        }
+
+        debug((mContext.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0);
+    }
 
     private static NotificationDelegater sSelf;
     private NotificationDelegater() {}

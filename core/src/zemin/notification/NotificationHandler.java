@@ -41,28 +41,13 @@ public class NotificationHandler extends Handler {
         super(looper != null ? looper : Looper.myLooper());
         mContext = context;
         ID = id;
-        TAG = "zemin." + getClass().getSimpleName() + "@" + id;
+        TAG = "zemin." + getClass().getSimpleName();
         if (DBG) Log.i(TAG, "init.");
     }
 
     final void setCenter(NotificationCenter center) {
         mCenter = center;
         mEffect = center.effect();
-    }
-
-    public boolean isEnabled() {
-        return mEnabled;
-    }
-
-    public void enable(boolean enable) {
-        if (enable && !mEnabled) {
-            if (DBG) Log.d(TAG, "Notification handler=" + ID + " is now enabled.");
-            mEnabled = true;
-        } else if (!enable && mEnabled) {
-            if (DBG) Log.d(TAG, "Notification handler=" + ID + " is now disabled.");
-            mEnabled = false;
-            cancelAll();
-        }
     }
 
     protected void onArrival(NotificationEntry entry) {
@@ -74,10 +59,52 @@ public class NotificationHandler extends Handler {
     protected void onCancelAll() {
     }
 
+    /**
+     * @return Context
+     */
+    public final Context getContext() {
+        return mContext;
+    }
+
+    /**
+     * Whether notification is disabled.
+     *
+     * @return boolean
+     */
+    public boolean isEnabled() {
+        return mEnabled;
+    }
+
+    /**
+     * Enable/disable notification.
+     *
+     * @param enable
+     */
+    public void setEnabled(boolean enable) {
+        if (enable && !mEnabled) {
+            if (DBG) Log.d(TAG, "Notification handler=" + ID + " is now enabled.");
+            mEnabled = true;
+        } else if (!enable && mEnabled) {
+            if (DBG) Log.d(TAG, "Notification handler=" + ID + " is now disabled.");
+            mEnabled = false;
+            cancelAll();
+        }
+    }
+
+    /**
+     * Get the singleton object of {@link NotificationEffect}.
+     *
+     * @return NotificationEffect
+     */
     public NotificationEffect effect() {
         return mEffect;
     }
 
+    /**
+     * Enable/disable notification effect.
+     *
+     * @param enable
+     */
     public void enableEffect(boolean enable) {
         if (enable && !mEffectEnabled) {
             if (DBG) Log.d(TAG, "Notification effect is now enabled for handler=" + ID);
@@ -91,18 +118,39 @@ public class NotificationHandler extends Handler {
         }
     }
 
+    /**
+     * Cancel notification effect.
+     *
+     * @param entry
+     */
     public void cancelEffect(NotificationEntry entry) {
         entry.mEffectConsumers &= ~ID;
     }
 
+    /**
+     * Get notification by its id.
+     *
+     * @param entryId
+     * @return NotificationEntry
+     */
     public NotificationEntry getEntry(int entryId) {
         return mCenter.getEntry(entryId);
     }
 
+    /**
+     * Get notification count.
+     *
+     * @return int
+     */
     public int getNotificationCount() {
         return mCenter.getEntryCount(ID);
     }
 
+    /**
+     * Send notification.
+     *
+     * @param entry
+     */
     public void send(NotificationEntry entry) {
         if (entry.isSentToTarget(ID)) {
             final int targets = entry.mTargets;
@@ -112,6 +160,11 @@ public class NotificationHandler extends Handler {
         }
     }
 
+    /**
+     * Cancel notification by its id.
+     *
+     * @param entryId
+     */
     public void cancel(int entryId) {
         NotificationEntry entry = mCenter.getEntry(entryId);
         if (entry != null) {
@@ -119,6 +172,11 @@ public class NotificationHandler extends Handler {
         }
     }
 
+    /**
+     * Cancel notification.
+     *
+     * @param entry
+     */
     public void cancel(NotificationEntry entry) {
         if (entry.isSentToTarget(ID)) {
             final int targets = entry.mTargets;
@@ -129,6 +187,9 @@ public class NotificationHandler extends Handler {
         }
     }
 
+    /**
+     * Cancel all notifications.
+     */
     public void cancelAll() {
         if (DBG) Log.v(TAG, "prepare to cancel all");
         cancelSchedule(ARRIVE);
@@ -244,4 +305,6 @@ public class NotificationHandler extends Handler {
             break;
         }
     }
+
+    public String toSimpleString() { return null; }
 }

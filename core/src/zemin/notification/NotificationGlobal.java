@@ -16,143 +16,284 @@
 
 package zemin.notification;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.PixelFormat;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.LayerDrawable;
 import android.os.Looper;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 
 /**
- * Manage floating notification view.
+ * A floating notification window holds a notification root view {@link NotificationRootView},
+ * where both view {@link NotificationView} and board {@link NotificationBoard} are sitting on.
  */
 public class NotificationGlobal extends NotificationHandler {
 
+    public static final String SIMPLE_NAME = "Global";
     public static boolean DBG;
 
-    private NotificationWindow mWindow;
-    private NotificationView mView;
-
-    /* package */ NotificationGlobal(Context context, Looper looper) {
-        super(context, NotificationEntry.TARGET_GLOBAL, looper);
-
-        mWindow = new NotificationWindow(context);
-        mView = new NotificationView(context);
-        mView.setNotificationHandler(this);
-        setView(mView);
-    }
-
-    private void setView(NotificationView view) {
-        final int w = Math.min((mContext.getResources().getDisplayMetrics().widthPixels -
-                                NotificationRootView.PADDING_LEFT -
-                                NotificationRootView.PADDING_RIGHT),
-                               NotificationRootView.DEFAULT_WIDTH);
-        final int h = FrameLayout.LayoutParams.WRAP_CONTENT;
-
-        final FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h);
-        lp.gravity = Gravity.CENTER | Gravity.TOP;
-        lp.topMargin = NotificationRootView.PADDING_TOP;
-
-        mWindow.mRoot.addNotificationView(mView, lp);
-    }
-
-    public NotificationView getView() {
-        return mView;
-    }
-
-    public void dismissView() {
-        mView.dismiss();
-    }
-
-    public View findViewById(int resId) {
-        return mView.findViewById(resId);
-    }
-
-    public boolean hasViewCallback() {
-        return mView.hasCallback();
-    }
-
-    public void setViewCallback(NotificationView.Callback cb) {
-        mView.setCallback(cb);
-    }
-
-    @Override
-    protected void onCancel(NotificationEntry entry) {
-        mView.onCancel(entry);
-    }
-
-    @Override
-    protected void onCancelAll() {
-        mView.onCancelAll();
-    }
-
-    @Override
-    protected void onArrival(NotificationEntry entry) {
-        if (!mView.hasCallback()) {
-            mView.setCallback(DEFAULT_VIEWCALLBACK);
-        }
-        mView.onArrival(entry);
-    }
-
-    private final NotificationView.Callback DEFAULT_VIEWCALLBACK = new ViewCallback();
-
-    public class ViewCallback extends NotificationViewCallback {
+    /**
+     * Implementaiton of {@link NotificationViewCallback} for floating {@link NotificationView}.
+     */
+    public static class ViewCallback extends NotificationViewCallback {
 
         @Override
-        public int getDefaultContentResId() {
+        public int getContentViewDefaultLayoutId(NotificationView view) {
             return R.layout.notification_full;
         }
 
         @Override
-        public void onSetupView(NotificationView view) {
-            final float cornerRadius = NotificationView.DEFAULT_CORNER_RADIUS;
-            final Drawable contentBackground = view.getContentBackground();
-            final int numLayer = 5;
-            final int inset_lr_step = 1;
-            final int inset_b_step = 2;
-            final int inset_t = 5;
-            final Drawable[] layers = new Drawable[numLayer];
-            for (int i = numLayer - 2; i >= 0; i--) {
-                GradientDrawable blur = new GradientDrawable();
-                blur.setColor((1<<(i + 28)) | 0x00cccccc);
-                blur.setCornerRadius(cornerRadius);
-                layers[i] = blur;
-            }
-            layers[numLayer - 1] = contentBackground;
+        public void onViewSetup(NotificationView view) {
+            view.setContentMargin(0, 0, 0, 0);
+            view.setDefaultBackgroundColor(0xff000000);
+            view.setDefaultBackgroundAlpha(0x7f);
+        }
 
-            LayerDrawable layerBackground = new LayerDrawable(layers);
-            for (int i = 0, last = numLayer - 1; i <= last; i++) {
-                final int inset_lr = i * inset_lr_step;
-                final int inset_b = i * inset_b_step;
-                if (i == 0) {
-                    layerBackground.setLayerInset(i, 0, inset_t, 0, 0);
-                } else if (i == last) {
-                    layerBackground.setLayerInset(i, inset_lr, 0, inset_lr, inset_b);
-                } else {
-                    layerBackground.setLayerInset(i, inset_lr, inset_t, inset_lr, inset_b);
+        @Override
+        public void onContentViewChanged(NotificationView view, View contentView, int layoutId) {
+            super.onContentViewChanged(view, contentView, layoutId);
+
+            NotificationView.ChildView childView;
+
+            childView = view.getChildView(NotificationView.ChildView.TITLE);
+            if (childView != null) {
+                if (childView.viewSwitcher != null) {
+                    for (int i = 0; i < 2; i++) {
+                        TextView titleView = (TextView) childView.viewSwitcher.getChildAt(i);
+                        titleView.setTextColor(0xffffffff);
+                    }
+                } else if (childView.view != null) {
+                    TextView titleView = (TextView) childView.view;
+                    titleView.setTextColor(0xffffffff);
                 }
             }
-            view.setContentBackground(layerBackground);
 
-            final int padding = (numLayer - 1) * inset_b_step;
-            view.setContentPadding(padding, 0, padding, padding);
-            view.setCornerRadius(cornerRadius);
+            childView = view.getChildView(NotificationView.ChildView.TEXT);
+            if (childView != null) {
+                if (childView.viewSwitcher != null) {
+                    for (int i = 0; i < 2; i++) {
+                        TextView textView = (TextView) childView.viewSwitcher.getChildAt(i);
+                        textView.setTextColor(0xffbdbdbd);
+                    }
+                } else if (childView.view != null) {
+                    TextView textView = (TextView) childView.view;
+                    textView.setTextColor(0xffbdbdbd);
+                }
+            }
+
+            childView = view.getChildView(NotificationView.ChildView.WHEN);
+            if (childView != null) {
+                if (childView.viewSwitcher != null) {
+                    for (int i = 0; i < 2; i++) {
+                        TextView whenView = (TextView) childView.viewSwitcher.getChildAt(i);
+                        whenView.setTextColor(0xffbdbdbd);
+                    }
+                } else if (childView.view != null) {
+                    TextView whenView = (TextView) childView.view;
+                    whenView.setTextColor(0xffbdbdbd);
+                }
+            }
+        }
+    }
+
+    private NotificationView mView;
+    private NotificationBoard mBoard;
+    private NotificationWindow mWindow;
+
+    /* package */ NotificationGlobal(Context context, Looper looper) {
+        super(context, NotificationDelegater.GLOBAL, looper);
+
+        mWindow = new NotificationWindow(context);
+    }
+
+    /**
+     * Get notification view.
+     *
+     * @return NotificationView
+     */
+    public NotificationView getView() {
+        return mView;
+    }
+
+    /**
+     * Get notification board.
+     *
+     * @return NotificationBoard
+     */
+    public NotificationBoard getBoard() {
+        return mBoard;
+    }
+
+    /**
+     * Enable/disable notification view.
+     *
+     * @param enable
+     */
+    public void setViewEnabled(boolean enable) {
+        final NotificationRootView root = mWindow.mRoot;
+        root.setViewEnabled(enable);
+        if (enable && mView == null) {
+            mView = root.getView();
+            mView.initialize(this);
+            mView.addStateListener(new ViewStateListener());
+        }
+    }
+
+    /**
+     * Enable/disable notification board
+     *
+     * @param enable
+     */
+    public void setBoardEnabled(boolean enable) {
+        final NotificationRootView root = mWindow.mRoot;
+        root.setBoardEnabled(enable);
+        if (enable && mBoard == null) {
+            mBoard = root.getBoard();
+            mBoard.addStateListener(new BoardStateListener());
+        }
+    }
+
+    /**
+     * Set callback for notification view.
+     *
+     * @param cb
+     */
+    public void setViewCallback(NotificationViewCallback cb) {
+        if (mView != null) {
+            mView.setCallback(cb);
+        }
+    }
+
+    /**
+     * Set callback for notification board.
+     *
+     * @param cb
+     */
+    public void setBoardCallback(NotificationBoardCallback cb) {
+        if (mBoard != null) {
+            mBoard.setCallback(cb);
+        }
+    }
+
+    /**
+     * Dismiss notification view.
+     */
+    public void dismissView() {
+        if (mView != null) {
+            mView.dismiss();
+        }
+    }
+
+    /**
+     * Open notification board.
+     */
+    public void openBoard() {
+        if (mBoard != null) {
+            mBoard.open(true);
+        }
+    }
+
+    /**
+     * Close notification board.
+     */
+    public void closeBoard() {
+        if (mBoard != null) {
+            mBoard.close(true);
+        }
+    }
+
+    @Override
+    protected void onCancel(NotificationEntry entry) {
+        if (mView != null) {
+            mView.onCancel(entry);
+        } else {
+            onCancelFinished(entry);
+        }
+    }
+
+    @Override
+    protected void onCancelAll() {
+        if (mView != null) {
+            mView.onCancelAll();
+        } else {
+            onCancelAllFinished();
+        }
+    }
+
+    @Override
+    protected void onArrival(NotificationEntry entry) {
+        if (mView == null) {
+            Log.w(TAG, "NotificationView not found.");
+            onSendIgnored(entry);
+            return;
+        }
+
+        if (!mView.hasCallback()) {
+            if (DBG) Log.v(TAG, "set default NotificationViewCallback.");
+            mView.setCallback(new ViewCallback());
+        }
+
+        if (!mView.isViewEnabled()) {
+            if (DBG) Log.v(TAG, "NotificationView is currently disabled.");
+            onSendIgnored(entry);
+            return;
+        }
+
+        mView.onArrival(entry);
+    }
+
+    private final class ViewStateListener extends NotificationView.SimpleStateListener {
+
+        @Override
+        public void onViewTicking(NotificationView view) {
+            if (DBG) Log.v(TAG, "onViewTicking");
+            if (mBoard == null || !mBoard.isShowing()) {
+                mWindow.attach();
+            }
         }
 
         @Override
-        public void onContentViewChanged(NotificationView view, View contentView, int contentResId) {
-            super.onContentViewChanged(view, contentView, contentResId);
+        public void onViewDismiss(NotificationView view) {
+            if (DBG) Log.v(TAG, "onViewDismiss");
+            if (mBoard == null || !mBoard.isShowing()) {
+                mWindow.detach();
+            }
+        }
+    }
+
+    private final class BoardStateListener extends NotificationBoard.SimpleStateListener {
+
+        @Override
+        public void onBoardPrepare(NotificationBoard board) {
+            if (DBG) Log.v(TAG, "onBoardPrepare");
+            if (mView == null || !mView.isTicking()) {
+                mWindow.attach();
+            }
+            mWindow.expand(true);
         }
 
         @Override
-        public void onShowNotification(NotificationView view, NotificationEntry entry, int contentResId) {
-            super.onShowNotification(view, entry, contentResId);
+        public void onBoardEndOpen(NotificationBoard board) {
+            if (DBG) Log.v(TAG, "onBoardEndOpen");
+        }
+
+        @Override
+        public void onBoardEndClose(NotificationBoard board) {
+            if (DBG) Log.v(TAG, "onBoardEndClose");
+            if (mView == null || !mView.isTicking()) {
+                mWindow.detach();
+            }
+            mWindow.expand(false);
         }
     }
 
@@ -161,6 +302,8 @@ public class NotificationGlobal extends NotificationHandler {
         private WindowManager mWindowManager;
         private WindowManager.LayoutParams mLayoutParams;
         private NotificationRootView mRoot;
+        private NotificationBoard mBoard;
+        private NotificationView mView;
         private boolean mAttached;
 
         NotificationWindow(Context context) {
@@ -170,10 +313,34 @@ public class NotificationGlobal extends NotificationHandler {
                 mContext.getSystemService(Context.WINDOW_SERVICE);
 
             mRoot = new NotificationRootView(mContext);
-            mRoot.setLifecycleListener(mLifecycleListener);
-            mRoot.setClipChildren(false);
-            mRoot.setClipToPadding(false);
             addView(mRoot);
+
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
+            context.registerReceiver(mReceiver, filter);
+        }
+
+        void expand(boolean expand) {
+            WindowManager.LayoutParams lp = getWindowLayoutParams();
+            lp.height = expand ? WindowManager.LayoutParams.MATCH_PARENT :
+                WindowManager.LayoutParams.WRAP_CONTENT;
+            mWindowManager.updateViewLayout(this, lp);
+        }
+
+        private void attach() {
+            if (!mAttached) mWindowManager.addView(this, getWindowLayoutParams());
+        }
+
+        private void detach() {
+            if (mAttached) mWindowManager.removeView(this);
+        }
+
+        private void onBackKey() {
+            mRoot.onBackKey();
+        }
+
+        private void onHomeKey() {
+            mRoot.onHomeKey();
         }
 
         private WindowManager.LayoutParams getWindowLayoutParams() {
@@ -194,38 +361,41 @@ public class NotificationGlobal extends NotificationHandler {
             return mLayoutParams;
         }
 
-        private final NotificationView.LifecycleListener mLifecycleListener =
-            new NotificationView.LifecycleListener() {
+        private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
 
                 @Override
-                public void onShow() {
-                    attach();
-                }
-
-                @Override
-                public void onDismiss() {
-                    detach();
+                public void onReceive(Context context, Intent intent) {
+                    if ("homekey".equals(intent.getStringExtra("reason"))) {
+                        onHomeKey();
+                    }
                 }
             };
 
-        private void attach() {
-            if (!mAttached) mWindowManager.addView(this, getWindowLayoutParams());
-        }
-
-        private void detach() {
-            if (mAttached) mWindowManager.removeView(this);
+        @Override
+        public boolean dispatchKeyEvent(KeyEvent event) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK &&
+                event.getAction() == KeyEvent.ACTION_UP) {
+                onBackKey();
+                return true;
+            }
+            return super.dispatchKeyEvent(event);
         }
 
         @Override
         public void onAttachedToWindow() {
             super.onAttachedToWindow();
+            if (DBG) Log.v(TAG, "attached.");
             mAttached = true;
         }
 
         @Override
         public void onDetachedFromWindow() {
             super.onDetachedFromWindow();
+            if (DBG) Log.v(TAG, "detached.");
             mAttached = false;
         }
     }
+
+    @Override public String toSimpleString() { return SIMPLE_NAME; }
+    @Override public String toString() { return SIMPLE_NAME; }
 }

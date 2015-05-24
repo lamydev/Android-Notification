@@ -27,7 +27,6 @@ import android.util.Log;
 
 /**
  * Effects:
- *
  * 1) ringtone
  * 2) vibration (require manifest permission {@link android.Manifest.permission#VIBRATE})
  */
@@ -61,7 +60,11 @@ public class NotificationEffect {
         mContext = context;
     }
 
-    public void enable(boolean enable) {
+    public boolean isEnabled() {
+        return mEnabled;
+    }
+
+    public void setEnabled(boolean enable) {
         if (enable && !mEnabled) {
             if (DBG) Log.d(TAG, "Notification effect is now enabled.");
             mEnabled = true;
@@ -161,12 +164,12 @@ public class NotificationEffect {
             return;
         }
         if (mRingtoneEnabled && mRingtoneAuto &&
-            entry.useRingtone && entry.ringtoneUri == null) {
+            entry.playRingtone && entry.ringtoneUri == null) {
             // default ringtone
             if (DBG) Log.d(TAG, "[default] ringtone");
             entry.setRingtone(mContext, mRingtoneRes);
         }
-        if (entry.useRingtone) {
+        if (entry.playRingtone) {
             Uri ringtone = entry.ringtoneUri;
             if (ringtone == null) {
                 Log.e(TAG, "ringtone uri not found.");
@@ -224,7 +227,7 @@ public class NotificationEffect {
             }
 
             if (mVibratorEnabled && mVibratorAuto &&
-                entry.useVibrate && entry.vibrateTime <= 0 &&
+                entry.useVibration && entry.vibrateTime <= 0 &&
                 entry.vibratePattern == null) {
                 // default vibration
                 if (DBG) Log.d(TAG, "[default] vibrate - " + mVibrateTime + " ms");
@@ -232,7 +235,7 @@ public class NotificationEffect {
             }
 
             cancelVibration();
-            if (entry.useVibrate) {
+            if (entry.useVibration) {
                 if (entry.vibratePattern != null) {
                     if (DBG) Log.d(TAG, "vibrate - " + entry.vibratePattern);
                     mVibrator.vibrate(entry.vibratePattern, entry.vibrateRepeat);

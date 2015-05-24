@@ -16,26 +16,34 @@
 
 package zemin.notification;
 
+import android.view.View;
+import android.view.animation.Animation;
+
 /**
- * Listener used to propagate events indicating when notifications
- * are delivered and/or canceled.
- *
- * @see NotificationDelegater#addListener
- * @see NotificationDelegater#removeListener
+ * A convenience class to extend when you only want to listen for a subset
+ * of all animation states. This implements all methods in the
+ * {@link android.view.animation.Animation#AnimationListener}.
  */
-public interface NotificationListener {
+public class AnimationListener implements Animation.AnimationListener {
 
     /**
-     * called when a notification arrives.
-     *
-     * @param entry
+     * {@inheritDoc}
      */
-    void onArrival(NotificationEntry entry);
+    @Override
+    public void onAnimationStart(Animation animation) {
+    }
 
     /**
-     * called when a notification is canceled.
-     *
-     * @param entry
+     * {@inheritDoc}
      */
-    void onCancel(NotificationEntry entry);
+    @Override
+    public void onAnimationEnd(Animation animation) {
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onAnimationRepeat(Animation animation) {
+    }
 }

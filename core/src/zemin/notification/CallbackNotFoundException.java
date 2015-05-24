@@ -17,25 +17,9 @@
 package zemin.notification;
 
 /**
- * Listener used to propagate events indicating when notifications
- * are delivered and/or canceled.
- *
- * @see NotificationDelegater#addListener
- * @see NotificationDelegater#removeListener
+ * RuntimeException to be thrown when callback not set.
  */
-public interface NotificationListener {
+public class CallbackNotFoundException extends RuntimeException {
 
-    /**
-     * called when a notification arrives.
-     *
-     * @param entry
-     */
-    void onArrival(NotificationEntry entry);
-
-    /**
-     * called when a notification is canceled.
-     *
-     * @param entry
-     */
-    void onCancel(NotificationEntry entry);
+    public CallbackNotFoundException(String msg) { super(msg); }
 }

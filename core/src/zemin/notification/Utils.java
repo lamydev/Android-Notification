@@ -17,25 +17,21 @@
 package zemin.notification;
 
 /**
- * Listener used to propagate events indicating when notifications
- * are delivered and/or canceled.
- *
- * @see NotificationDelegater#addListener
- * @see NotificationDelegater#removeListener
+ * Utils
  */
-public interface NotificationListener {
+public class Utils {
 
     /**
-     * called when a notification arrives.
+     * Calculate the alpha value for a position offset.
      *
-     * @param entry
+     * @param alphaStart
+     * @param alphaEnd
+     * @param posStart
+     * @param posEnd
+     * @param posOffset
      */
-    void onArrival(NotificationEntry entry);
-
-    /**
-     * called when a notification is canceled.
-     *
-     * @param entry
-     */
-    void onCancel(NotificationEntry entry);
+    public static float getAlphaForOffset(float alphaStart, float alphaEnd,
+                                          float posStart, float posEnd, float posOffset) {
+        return alphaStart + posOffset * (alphaEnd - alphaStart) / (posEnd - posStart);
+    }
 }

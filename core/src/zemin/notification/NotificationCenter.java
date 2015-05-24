@@ -29,13 +29,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 /**
- * Manage the following components:
- *
- * {@link NotificationLocal}
- * {@link NotificationGlobal}
- * {@link NotificationRemote}
- * {@link NotificationListener}
- * {@link NotificationEffect}
+ * Notification center.
  */
 public class NotificationCenter {
 
@@ -106,19 +100,23 @@ public class NotificationCenter {
     }
 
     boolean hasEntries() {
-        synchronized (mEntries) { return !mEntries.isEmpty(); }
+        return !mEntries.isEmpty();
     }
 
     boolean hasEntry(Integer id) {
-        synchronized (mEntries) { return mEntries.containsKey(id); }
+        return mEntries.containsKey(id);
+    }
+
+    ArrayList<NotificationEntry> getEntries() {
+        return new ArrayList<NotificationEntry>(mEntries.values());
     }
 
     NotificationEntry getEntry(Integer id) {
-        synchronized (mEntries) { return mEntries.get(id); }
+        return mEntries.get(id);
     }
 
     int getEntryCount() {
-        synchronized (mEntries) { return mEntries.size(); }
+        return mEntries.size();
     }
 
     int getEntryCount(int target) {
@@ -218,7 +216,11 @@ public class NotificationCenter {
                         onSendRequested(entry);
                     }
                 } else if ((diff & NotificationEntry.FLAG_REQUEST_CANCEL) != 0) {
-                    onCancelRequested(entry);
+                    if (entry.mTargets == entry.mCancels) {
+                        removeEntry(entry.ID);
+                    } else {
+                        onCancelRequested(entry);
+                    }
                 } else if ((diff & NotificationEntry.FLAG_SEND_FINISHED) != 0) {
                     entry.mFlag &= ~NotificationEntry.FLAG_SEND_FINISHED;
                     addEntry(entry.ID, entry);
