@@ -136,9 +136,29 @@ public class NotificationLocal extends NotificationHandler {
 
         if (!mView.isViewEnabled()) {
             if (DBG) Log.v(TAG, "NotificationView is currently disabled.");
+            onSendIgnored(entry);
+            return;
         }
 
         mView.onArrival(entry);
+    }
+
+
+    @Override
+    protected void onUpdate(NotificationEntry entry) {
+        if (mView == null) {
+            Log.w(TAG, "NotificationView not found.");
+            onUpdateIgnored(entry);
+            return;
+        }
+
+        if (!mView.isViewEnabled()) {
+            if (DBG) Log.v(TAG, "NotificationView is currently disabled.");
+            onUpdateIgnored(entry);
+            return;
+        }
+
+        mView.onUpdate(entry);
     }
 
     @Override public String toSimpleString() { return SIMPLE_NAME; }

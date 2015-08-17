@@ -41,17 +41,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.ImageSwitcher;
-import android.widget.ImageView;
-import android.widget.TextSwitcher;
-import android.widget.TextView;
-import android.widget.ViewSwitcher;
-import android.support.v4.util.ArrayMap;
+
 import android.support.v4.view.GestureDetectorCompat;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.ListIterator;
 
 /**
@@ -97,9 +91,6 @@ public class NotificationView extends FrameLayout
     private final ArrayList<NotificationEntry> mEntries =
         new ArrayList<NotificationEntry>();
 
-    private final ArrayMap<Integer, ChildView> mChildViews =
-        new ArrayMap<Integer, ChildView>();
-
     private ArrayList<StateListener> mListeners = null;
 
     private final Object mEntryLock = new Object();
@@ -131,10 +122,13 @@ public class NotificationView extends FrameLayout
     private int mHideTransitionTime = HIDE_TRANSITION_TIME;
     private int mNotiDisplayTime = NOTIFICATION_DISPLAY_TIME;
 
+    private ChildViewManager mChildViewManager;
+
     private ObjectAnimator mBackgroundColorAnimator;
     private ObjectAnimator mBackgroundAlphaAnimator;
     private AnimationListener mHideAnimationListener;
     private ContentViewSwitcher mContentViewSwitcher;
+    private boolean mTransitionEnabled = true;
     private boolean mShowHideAnimEnabled = true;
     private Animation mDefaultShowAnimation;
     private Animation mDefaultHideAnimation;
@@ -198,9 +192,18 @@ public class NotificationView extends FrameLayout
     }
 
     void initialize(NotificationHandler handler) {
+        TAG += "@" + handler.toSimpleString();
         mContext = getContext();
         mNotificationHandler = handler;
-        TAG += "@" + handler.toSimpleString();
+        mContentViewSwitcher = new ContentViewSwitcher();
+        mChildViewManager = new ChildViewManager();
+        mGestureDetector = new GestureDetectorCompat(mContext, this);
+        mContentBackground = new GradientDrawable();
+        mDimension[0] = LayoutParams.MATCH_PARENT;
+        mDimension[1] = LayoutParams.WRAP_CONTENT;
+        mHideAnimationListener = mDismissAnimationListener;
+        mDefaultShowAnimation = AnimationFactory.pushDownIn();
+        mDefaultHideAnimation = AnimationFactory.pushUpOut();
     }
 
     /**
@@ -257,6 +260,25 @@ public class NotificationView extends FrameLayout
      */
     public boolean isTicking() {
         return hasState(TICKING) && !hasState(DISMISSED);
+    }
+
+    /**
+     * Enable/disable transition between notifications. If disabled,
+     *
+     * @param enable
+     */
+    public void setNotificationTransitionEnabled(boolean enable) {
+        if (mTransitionEnabled != enable) {
+            if (DBG) Log.v(TAG, "transition enable - " + enable);
+            mTransitionEnabled = enable;
+        }
+    }
+
+    /**
+     *
+     */
+    public boolean isNotificationTransitionEnabled() {
+        return mTransitionEnabled;
     }
 
     /**
@@ -539,10 +561,6 @@ public class NotificationView extends FrameLayout
     }
 
     /**
-     * Get contentView switcher.
-     *
-     * @see ContentViewSwitcher
-     *
      * @return ContentViewSwitcher
      */
     public ContentViewSwitcher getContentViewSwitcher() {
@@ -550,130 +568,10 @@ public class NotificationView extends FrameLayout
     }
 
     /**
-     * Set child-view switcher.
-     *
-     * @see ChildView#ICON
-     * @see ChildView#TITLE
-     * @see ChildView#TEXT
-     * @see ChildView#WHEN
-     *
-     * @param type
-     * @param resId
+     * @return ChildViewManager
      */
-    public void setChildViewSwitcher(int type, int resId) {
-        ChildView child = mChildViews.get(Integer.valueOf(type));
-        if (child == null) {
-            child = new ChildView(type);
-            mChildViews.put(Integer.valueOf(type), child);
-        }
-        child.setViewSwitcher(resId);
-    }
-
-    /**
-     * Set child-view.
-     *
-     * @see ChildView#ICON
-     * @see ChildView#TITLE
-     * @see ChildView#TEXT
-     * @see ChildView#WHEN
-     *
-     * @param type
-     * @param resId
-     */
-    public void setChildView(int type, int resId) {
-        ChildView child = mChildViews.get(Integer.valueOf(type));
-        if (child == null) {
-            child = new ChildView(type);
-            mChildViews.put(Integer.valueOf(type), child);
-        }
-        child.setView(resId);
-    }
-
-    /**
-     * Remove child-view.
-     *
-     * @see ChildView#ICON
-     * @see ChildView#TITLE
-     * @see ChildView#TEXT
-     * @see ChildView#WHEN
-     *
-     * @param type
-     */
-    public void removeChildView(int type) {
-        if (mChildViews.containsKey(Integer.valueOf(type)))
-            mChildViews.remove(Integer.valueOf(type));
-    }
-
-    /**
-     * Get child-view.
-     *
-     * @param type
-     * @return ChildView
-     */
-    public ChildView getChildView(int type) {
-        return mChildViews.get(Integer.valueOf(type));
-    }
-
-    /**
-     * Show child-view.
-     *
-     * @param type
-     */
-    public void showChildView(int type) {
-        ChildView child = mChildViews.get(Integer.valueOf(type));
-        if (child != null) child.show();
-    }
-
-    /**
-     * Hide child-view.
-     *
-     * @param type
-     */
-    public void hideChildView(int type) {
-        ChildView child = mChildViews.get(Integer.valueOf(type));
-        if (child != null) child.hide();
-    }
-
-    /**
-     * Set image drawable to child-view. Exception {@link java.lang.ClassCastException} will
-     * be thrown, if the target child-view is not an instance of {@link android.widget.ImageView}.
-     *
-     * @see ChildView#setImageDrawable
-     *
-     * @param type
-     * @param drawable
-     */
-    public void setChildViewImageDrawable(int type, Drawable drawable) {
-        ChildView child = mChildViews.get(Integer.valueOf(type));
-        if (child != null) child.setImageDrawable(drawable);
-    }
-
-    /**
-     * Set text to child-view. Exception {@link java.lang.ClassCastException} will be
-     * thrown, if the target child-view is not an instance of {@link android.widget.TextView}.
-     *
-     * @see ChildView#setText
-     *
-     * @param type
-     * @param text
-     */
-    public void setChildViewText(int type, CharSequence text) {
-        ChildView child = mChildViews.get(Integer.valueOf(type));
-        if (child != null) child.setText(text);
-    }
-
-    private void resetChildViews() {
-        Collection<ChildView> children = mChildViews.values();
-        for (ChildView child : children) {
-            child.reset();
-        }
-    }
-
-    private void clearChildViews() {
-        Collection<ChildView> children = mChildViews.values();
-        for (ChildView child : children) {
-            child.clear();
-        }
+    public ChildViewManager getChildViewManager() {
+        return mChildViewManager;
     }
 
     /**
@@ -754,19 +652,7 @@ public class NotificationView extends FrameLayout
         if (mContentView != null) {
             mContentViewSwitcher.start(view);
         } else {
-            mContentBackground = new GradientDrawable();
             addState(CONTENT_BACKGROUND_CHANGED);
-
-            mDimension[0] = LayoutParams.MATCH_PARENT;
-            mDimension[1] = LayoutParams.WRAP_CONTENT;
-
-            mHideAnimationListener = mDismissAnimationListener;
-            mDefaultShowAnimation = AnimationFactory.pushDownIn();
-            mDefaultHideAnimation = AnimationFactory.pushUpOut();
-
-            mContentViewSwitcher = new ContentViewSwitcher();
-            mGestureDetector = new GestureDetectorCompat(mContext, this);
-
             setContentViewInner(view);
         }
     }
@@ -774,10 +660,10 @@ public class NotificationView extends FrameLayout
     private void setContentViewInner(View view) {
         addState(CONTENT_CHANGED);
         removeAllViews();
-        clearChildViews();
-        mLastEntry = null;
+        clearLastEntry();
         mDismissOnDragDistanceFarEnough = 0;
         view.setBackground(null);
+        mChildViewManager.clear();
         mContentView = view;
         mCallback.onContentViewChanged(this, view, mCurrentLayoutId);
         updateContentBackground();
@@ -888,6 +774,13 @@ public class NotificationView extends FrameLayout
             mBackgroundAlphaAnimator.setIntValues(lastAlpha, currAlpha);
             mBackgroundAlphaAnimator.start();
         }
+    }
+
+    private void showNotification(NotificationEntry entry) {
+        mCallback.onShowNotification(this, mContentView, entry, mCurrentLayoutId);
+        updateContentBackground();
+        updateContentBackgroundColor(entry);
+        updateContentBackgroundAlpha(entry);
     }
 
     private void refreshContentView() {
@@ -1132,15 +1025,22 @@ public class NotificationView extends FrameLayout
     }
 
     /**
+     * Call this to perform a self-switch animation.
+     */
+    public void startInOutTransition() {
+        mContentViewSwitcher.start();
+    }
+
+    /**
      * Dismiss this view.
      */
     public void dismiss() {
-        mContentViewSwitcher.start(0);
+        mContentViewSwitcher.start();
     }
 
     void onArrival(NotificationEntry entry) {
         synchronized (mEntryLock) {
-            if (hasState(PAUSED)) {
+            if (hasState(PAUSED) || entry.silentMode) {
                 mNotificationHandler.onSendFinished(entry);
                 return;
             }
@@ -1160,18 +1060,43 @@ public class NotificationView extends FrameLayout
         }
     }
 
+    void onUpdate(NotificationEntry entry) {
+        synchronized (mEntryLock) {
+            if (mLastEntry == entry) {
+                schedule(MSG_UPDATE_NOTIFICATION, 0, 0, entry, 0);
+                mNotificationHandler.onUpdateFinished(entry);
+            } else if (!mEntries.contains(entry)) {
+                onArrival(entry);
+            }
+        }
+    }
+
     void onCancel(NotificationEntry entry) {
         synchronized (mEntryLock) {
             if (mEntries.contains(entry)) {
                 mEntries.remove(entry);
+            } else if (mLastEntry == entry) {
+                mContentViewSwitcher.start();
             }
         }
         mNotificationHandler.onCancelFinished(entry);
     }
 
     void onCancelAll() {
-        mContentViewSwitcher.start(0);
+        mContentViewSwitcher.start();
         mNotificationHandler.onCancelAllFinished();
+    }
+
+    private void clearLastEntry() {
+        if (mLastEntry != null) {
+            if (mLastEntry.nohistory) {
+                mNotificationHandler.reportCanceled(mLastEntry);
+            }
+            if (mLastEntry.autoSilentMode) {
+                mLastEntry.silentMode = true;
+            }
+        }
+        mLastEntry = null;
     }
 
     public void sendPendings() {
@@ -1260,7 +1185,7 @@ public class NotificationView extends FrameLayout
         clearState(TICKING);
         clearState(DISMISSING);
         addState(DISMISSED);
-        mLastEntry = null;
+        clearLastEntry();
         removeView(mContentView);
         onViewDismiss();
     }
@@ -1349,7 +1274,7 @@ public class NotificationView extends FrameLayout
             setContentViewInner(newContentView);
             schedule(MSG_START);
         } else {
-            resetChildViews();
+            mChildViewManager.reset();
             if (hasState(DISMISSED)) {
                 clearState(DISMISSED);
                 onViewTicking();
@@ -1420,32 +1345,29 @@ public class NotificationView extends FrameLayout
                           entry.whenLong : System.currentTimeMillis());
         }
 
-        if (DBG) Log.v(TAG, "onShowNotification - " + entry.ID);
-        mCallback.onShowNotification(this, mContentView, entry, mCurrentLayoutId);
-
-        updateContentBackground();
-        updateContentBackgroundColor(entry);
-        updateContentBackgroundAlpha(entry);
-
+        showNotification(entry);
         clearState(CONTENT_CHANGED);
-        if (hasState(STARTING)) {
-            //
-            // waiting for the first layout of SWITCHER to be finished,
-            // so that we can adjust its size according to its content.
-            //
-            // 100 ms
-            //
-            schedule(MSG_CHILD_VIEW_ADJUST_HEIGHT,  100);
-            clearState(STARTING);
-        }
-
+        clearState(STARTING);
+        clearLastEntry();
         mLastEntry = entry;
         mNotificationHandler.onSendFinished(entry);
-        if (!isScheduled(MSG_SWITCH_TO_SELF)) {
+
+        if (mTransitionEnabled) {
+            mContentViewSwitcher.start(mNotiDisplayTime);
+        } else {
             schedule(MSG_SHOW, mNotiDisplayTime);
         }
 
         schedule(MSG_ENABLE_DISMISS_ON_GESTURE, DISMISS_FREEZE_TIME);
+    }
+
+    private void onMsgUpdateNotification(NotificationEntry entry) {
+        if (mLastEntry == entry) {
+            mCallback.onUpdateNotification(this, mContentView, entry, mCurrentLayoutId);
+            updateContentBackground();
+            updateContentBackgroundColor(entry);
+            updateContentBackgroundAlpha(entry);
+        }
     }
 
     private void onMsgDismiss() {
@@ -1482,14 +1404,6 @@ public class NotificationView extends FrameLayout
         mTargetContentView = target;
         mHideAnimationListener = mSwitchContentAnimationListener;
         hide();
-    }
-
-    private void onMsgChildViewAdjustHeight() {
-        if (DBG) Log.v(TAG, "childViewAdjustHeight");
-        Collection<ChildView> children = mChildViews.values();
-        for (ChildView child : children) {
-            child.adjustHeight();
-        }
     }
 
     private void onMsgEnableDismissOnGesture() {
@@ -1594,13 +1508,13 @@ public class NotificationView extends FrameLayout
             handled = mGestureListener.onSingleTapConfirmed(event);
         }
 
-        if (mDismissOnClick) {
-            mContentViewSwitcher.start(0);
+        mLastEntry.executeContentAction(mContext);
+        mCallback.onClickContentView(this, mContentView, mLastEntry);
+        if (mLastEntry.autoCancel) {
+            mLastEntry.cancel();
         } else {
             schedule(MSG_SHOW, mNotiDisplayTime);
         }
-
-        mCallback.onClickContentView(this, mContentView, mLastEntry);
         return handled;
     }
 
@@ -1716,7 +1630,7 @@ public class NotificationView extends FrameLayout
         } else {
             if (velocityY < 0 && Math.abs(velocityY) > DISMISS_GESTURE_VELOCITY) {
                 if (mDismissOnGestureEnabled) {
-                    mContentViewSwitcher.start(0);
+                    mContentViewSwitcher.start();
                     return true;
                 }
             }
@@ -1782,7 +1696,7 @@ public class NotificationView extends FrameLayout
          * switch to self
          */
         public void start() {
-            start(mNotiDisplayTime);
+            start(0);
         }
 
         public void start(int delay) {
@@ -1804,179 +1718,6 @@ public class NotificationView extends FrameLayout
         public void cancelPendings() {
             cancel(MSG_SWITCH_TO_SELF);
         }
-    }
-
-    public class ChildView {
-
-        public static final int ICON       = 0;
-        public static final int TITLE      = 1;
-        public static final int TEXT       = 2;
-        public static final int WHEN       = 3;
-        // add more...
-
-        public static final int TRANSITION_TIME = 700;
-
-        public final int type;
-        public View view;
-        public ViewSwitcher viewSwitcher;
-
-        private Animation mInAnimation;
-        private Animation mOutAnimation;
-        private int mInDuration = TRANSITION_TIME;
-        private int mOutDuration = TRANSITION_TIME;
-
-        private ChildView(int type) {
-            this.type = type;
-        }
-
-        public Animation getInAnimation() {
-            return mInAnimation;
-        }
-
-        public Animation getOutAnimation() {
-            return mOutAnimation;
-        }
-
-        public int getInDuration() {
-            return mInDuration;
-        }
-
-        public int getOutDuration() {
-            return mOutDuration;
-        }
-
-        public void setInAnimation(Animation animation, int duration) {
-            mInAnimation = animation;
-            mInDuration = duration;
-            updateAnimation();
-        }
-
-        public void setOutAnimation(Animation animation, int duration) {
-            mOutAnimation = animation;
-            mOutDuration = duration;
-            updateAnimation();
-        }
-
-        public void show() {
-            if (viewSwitcher != null) {
-                viewSwitcher.setVisibility(VISIBLE);
-            } else if (view != null) {
-                view.setVisibility(VISIBLE);
-            }
-        }
-
-        public void hide() {
-            if (viewSwitcher != null) {
-                viewSwitcher.setVisibility(INVISIBLE);
-            } else if (view != null) {
-                view.setVisibility(INVISIBLE);
-            }
-        }
-
-        // throws ClassCastException
-        public void setImageDrawable(Drawable drawable) {
-            if (viewSwitcher != null) {
-                ((ImageSwitcher) viewSwitcher).setImageDrawable(drawable);
-            } else if (view != null) {
-                ((ImageView) view).setImageDrawable(drawable);
-            }
-        }
-
-        // throws ClassCastException
-        public void setText(CharSequence text) {
-            if (viewSwitcher != null) {
-                ((TextSwitcher) viewSwitcher).setText(text);
-            } else if (view != null) {
-                ((TextView) view).setText(text);
-            }
-        }
-
-        private void reset() {
-            if (viewSwitcher != null) {
-                viewSwitcher.setAnimateFirstView(false);
-                viewSwitcher.reset();
-            }
-        }
-
-        private void clear() {
-            viewSwitcher = null;
-            view = null;
-        }
-
-        private void setViewSwitcher(int resId) {
-            if (DBG) Log.v(TAG, "switcher[" + type + "] update.");
-            viewSwitcher = (ViewSwitcher) mContentView.findViewById(resId);
-            if (viewSwitcher == null) {
-                throw new IllegalStateException("child-view switcher not found.");
-            }
-            updateAnimation();
-        }
-
-        private void setView(int resId) {
-            if (DBG) Log.v(TAG, "view[" + type + "] update.");
-            view = mContentView.findViewById(resId);
-            if (view == null) {
-                throw new IllegalStateException("child-view not found.");
-            }
-        }
-
-        private void updateAnimation() {
-            if (viewSwitcher == null) return;
-            if (viewSwitcher.getInAnimation() != mInAnimation || mInAnimation == null) {
-                if (mInAnimation == null) {
-                    mInAnimation = AnimationFactory.pushDownIn();
-                }
-                mInAnimation.setAnimationListener(mInAnimationListener);
-                mInAnimation.setDuration(mInDuration);
-                viewSwitcher.setInAnimation(mInAnimation);
-            }
-            if (viewSwitcher.getOutAnimation() != mOutAnimation || mOutAnimation == null) {
-                if (mOutAnimation == null) {
-                    mOutAnimation = AnimationFactory.pushDownOut();
-                }
-                mOutAnimation.setAnimationListener(mOutAnimationListener);
-                mOutAnimation.setDuration(mOutDuration);
-                viewSwitcher.setOutAnimation(mOutAnimation);
-            }
-        }
-
-        // TODO: a better way to wrap content of mContentView, especially TextView.
-        private void adjustHeight() {
-            if (viewSwitcher == null) return;
-            if (type == TEXT) {
-                TextView curr = (TextView) viewSwitcher.getCurrentView();
-                TextView next = (TextView) viewSwitcher.getNextView();
-                int currH = curr.getLineCount() * curr.getLineHeight();
-                int nextH = next.getLineCount() * next.getLineHeight();
-                if (currH != nextH) {
-                    curr.setHeight(currH);
-                    next.setHeight(currH);
-                }
-            }
-        }
-
-        private final AnimationListener mInAnimationListener = new AnimationListener() {
-
-                @Override
-                public void onAnimationStart(Animation animation) {
-                    adjustHeight();
-                }
-
-                @Override
-                public void onAnimationEnd(Animation animation) {
-                }
-            };
-
-        private final AnimationListener mOutAnimationListener = new AnimationListener() {
-
-                @Override
-                public void onAnimationStart(Animation animation) {
-                }
-
-                @Override
-                public void onAnimationEnd(Animation animation) {
-                }
-            };
     }
 
     private class ColorProperty extends Property<GradientDrawable, Integer> {
@@ -2093,7 +1834,7 @@ public class NotificationView extends FrameLayout
                 if (!mCanceled) {
                     if (DBG) Log.v(TAG, "drag out end");
                     mContentView.animate().setListener(null);
-                    mNotificationHandler.reportCanceled(mLastEntry);
+                    clearLastEntry();
                     clearState(DISMISSING);
                     cancel(MSG_START);
                     refreshContentView();
@@ -2171,8 +1912,8 @@ public class NotificationView extends FrameLayout
     private static final int MSG_SWITCH_TO_TARGET              = 3;
     private static final int MSG_DISMISS                       = 4;
     private static final int MSG_CLEAR_ANIMATION               = 5;
-    private static final int MSG_CHILD_VIEW_ADJUST_HEIGHT      = 6;
-    private static final int MSG_ENABLE_DISMISS_ON_GESTURE     = 7;
+    private static final int MSG_ENABLE_DISMISS_ON_GESTURE     = 6;
+    private static final int MSG_UPDATE_NOTIFICATION           = 7;
 
     private H mH;
     private H getH() { if (mH == null) mH = new H(this); return mH; }
@@ -2246,12 +1987,12 @@ public class NotificationView extends FrameLayout
                 v.onMsgClearAnimation();
                 break;
 
-            case MSG_CHILD_VIEW_ADJUST_HEIGHT:
-                v.onMsgChildViewAdjustHeight();
-                break;
-
             case MSG_ENABLE_DISMISS_ON_GESTURE:
                 v.onMsgEnableDismissOnGesture();
+                break;
+
+            case MSG_UPDATE_NOTIFICATION:
+                v.onMsgUpdateNotification((NotificationEntry) msg.obj);
                 break;
             }
         }

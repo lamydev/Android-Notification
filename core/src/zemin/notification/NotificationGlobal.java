@@ -63,46 +63,10 @@ public class NotificationGlobal extends NotificationHandler {
         public void onContentViewChanged(NotificationView view, View contentView, int layoutId) {
             super.onContentViewChanged(view, contentView, layoutId);
 
-            NotificationView.ChildView childView;
-
-            childView = view.getChildView(NotificationView.ChildView.TITLE);
-            if (childView != null) {
-                if (childView.viewSwitcher != null) {
-                    for (int i = 0; i < 2; i++) {
-                        TextView titleView = (TextView) childView.viewSwitcher.getChildAt(i);
-                        titleView.setTextColor(0xffffffff);
-                    }
-                } else if (childView.view != null) {
-                    TextView titleView = (TextView) childView.view;
-                    titleView.setTextColor(0xffffffff);
-                }
-            }
-
-            childView = view.getChildView(NotificationView.ChildView.TEXT);
-            if (childView != null) {
-                if (childView.viewSwitcher != null) {
-                    for (int i = 0; i < 2; i++) {
-                        TextView textView = (TextView) childView.viewSwitcher.getChildAt(i);
-                        textView.setTextColor(0xffbdbdbd);
-                    }
-                } else if (childView.view != null) {
-                    TextView textView = (TextView) childView.view;
-                    textView.setTextColor(0xffbdbdbd);
-                }
-            }
-
-            childView = view.getChildView(NotificationView.ChildView.WHEN);
-            if (childView != null) {
-                if (childView.viewSwitcher != null) {
-                    for (int i = 0; i < 2; i++) {
-                        TextView whenView = (TextView) childView.viewSwitcher.getChildAt(i);
-                        whenView.setTextColor(0xffbdbdbd);
-                    }
-                } else if (childView.view != null) {
-                    TextView whenView = (TextView) childView.view;
-                    whenView.setTextColor(0xffbdbdbd);
-                }
-            }
+            ChildViewManager mgr = view.getChildViewManager();
+            mgr.setTextColor(TITLE, 0xffffffff);
+            mgr.setTextColor(TEXT, 0xffffffff);
+            mgr.setTextColor(WHEN, 0xffffffff);
         }
     }
 
@@ -250,6 +214,23 @@ public class NotificationGlobal extends NotificationHandler {
         }
 
         mView.onArrival(entry);
+    }
+
+    @Override
+    protected void onUpdate(NotificationEntry entry) {
+        if (mView == null) {
+            Log.w(TAG, "NotificationView not found.");
+            onUpdateIgnored(entry);
+            return;
+        }
+
+        if (!mView.isViewEnabled()) {
+            if (DBG) Log.v(TAG, "NotificationView is currently disabled.");
+            onUpdateIgnored(entry);
+            return;
+        }
+
+        mView.onUpdate(entry);
     }
 
     private final class ViewStateListener extends NotificationView.SimpleStateListener {

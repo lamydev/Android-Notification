@@ -22,6 +22,8 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.List;
+
 /**
  * Delegater
  */
@@ -44,6 +46,8 @@ public class NotificationDelegater {
      * Support remote (status-bar) notifications.
      */
     public static final int REMOTE = 0x00000004;
+
+    public static final int MASK   = 0x0000000F;
 
 
     /**
@@ -105,7 +109,8 @@ public class NotificationDelegater {
     }
 
     /**
-     * Send notification.
+     * Send notification. If a notification with the same id has already been posted,
+     * it will be replaced by the updated information.
      *
      * @param entry
      */
@@ -114,12 +119,21 @@ public class NotificationDelegater {
     }
 
     /**
-     * Cancel notification by its id.
+     * Cancel notification.
      *
      * @param entryId
      */
     public void cancel(int entryId) {
         if (mEnabled) CENTER.cancel(entryId);
+    }
+
+    /**
+     * Cancel notification. Notifications having the same tag will all be canceled.
+     *
+     * @param tag
+     */
+    public void cancel(String tag) {
+        if (mEnabled) CENTER.cancel(tag);
     }
 
     /**
@@ -139,6 +153,35 @@ public class NotificationDelegater {
     }
 
     /**
+     * Whether any notifications exist.
+     *
+     * @return boolean
+     */
+    public boolean hasNotifications() {
+        return CENTER.hasEntries();
+    }
+
+    /**
+     * Whether the notification with id exists.
+     *
+     * @param entryId
+     * @return boolean
+     */
+    public boolean hasNotification(int entryId) {
+        return CENTER.hasEntry(entryId);
+    }
+
+    /**
+     * Whether the notifications with tag exists.
+     *
+     * @param tag
+     * @return boolean
+     */
+    public boolean hasNotifications(String tag) {
+        return CENTER.hasEntries(tag);
+    }
+
+    /**
      * Get notification by its id.
      *
      * @param entryId
@@ -149,12 +192,41 @@ public class NotificationDelegater {
     }
 
     /**
+     * Get notification by its tag.
+     *
+     * @param tag
+     * @return List
+     */
+    public List<NotificationEntry> getNotifications(String tag) {
+        return CENTER.getEntries(tag);
+    }
+
+    /**
+     * Get notifications.
+     *
+     * @return List
+     */
+    public List<NotificationEntry> getNotifications() {
+        return CENTER.mActives.getEntries();
+    }
+
+    /**
+     * Get current notification count.
+     *
+     * @param tag
+     * @return int
+     */
+    public int getNotificationCount(String tag) {
+        return CENTER.mActives.getEntryCount(tag);
+    }
+
+    /**
      * Get current notification count.
      *
      * @return int
      */
     public int getNotificationCount() {
-        return CENTER.getEntryCount();
+        return CENTER.mActives.getEntryCount();
     }
 
     /**
@@ -240,6 +312,9 @@ public class NotificationDelegater {
             NotificationRootView.DBG =
             NotificationBoard.DBG =
             NotificationBoardCallback.DBG =
+            ViewWrapper.DBG =
+            ViewSwitcherWrapper.DBG =
+            ChildViewManager.DBG =
             DBG = debug;
     }
 

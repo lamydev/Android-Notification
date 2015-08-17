@@ -16,7 +16,9 @@
 
 package zemin.notification;
 
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -26,6 +28,7 @@ import android.util.Log;
 import android.view.View;
 
 import java.io.File;
+import java.util.ArrayList;
 
 /**
  * Notification. You can also use {@link NotificationBuilder} to create {@link NotificationEntry} objects.
@@ -47,10 +50,19 @@ public class NotificationEntry {
      */
     public static final Priority DEFAULT_PRIORITY = Priority.LOW;
 
+    /**
+     * intent extra
+     */
+    public static final String KEY_EXTRA = "key_extra_bundle";
+
+
     public final int ID;
     public String tag;
     public Priority priority;
     public boolean ongoing;
+    public boolean nohistory;
+    public boolean silentMode;
+    public boolean autoSilentMode = true;
     public int delay;
     public int layoutId;
     public int backgroundColor;
@@ -64,6 +76,9 @@ public class NotificationEntry {
     public boolean showWhen = true;
     public long whenLong;
     public CharSequence whenFormatted;
+    public int progress;
+    public int progressMax;
+    public boolean progressIndeterminate;
     public boolean useSystemEffect = true;
     public boolean playRingtone = true;
     public Uri ringtoneUri;
@@ -73,15 +88,30 @@ public class NotificationEntry {
     public long vibrateTime;
     public Bundle extra;
     public Object obj;
-    public Class activityClass;
     public boolean autoCancel = true;
-    public View.OnClickListener onClickListener;
+    public Action contentAction;
+    public Action cancelAction;
+    ArrayList<Action> mActions;
 
     /**
      * Creator.
      */
     public static NotificationEntry create() {
         return new NotificationEntry(genId());
+    }
+
+    /**
+     * Send this notifications.
+     */
+    public void send() {
+        NotificationDelegater.getInstance().send(this);
+    }
+
+    /**
+     * Cancel this notification.
+     */
+    public void cancel() {
+        NotificationDelegater.getInstance().cancel(this);
     }
 
     /**
@@ -150,6 +180,45 @@ public class NotificationEntry {
      */
     public void setOngoing(boolean ongoing) {
         this.ongoing = ongoing;
+    }
+
+    /**
+     * A no-history notification is canceled immediately when the
+     * {@link NotificationView} presenting it is dismissed.
+     *
+     * only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
+     * @param nohistory
+     */
+    public void setNohistory(boolean nohistory) {
+        this.nohistory = nohistory;
+    }
+
+    /**
+     * In silent mode, any update of the notification won't be presented to the user.
+     * In other word, {@link NotificationView} won't displayed for this notification.
+     * To check the update, you can use {@link NotificationBoard} on which all the current
+     * notifications reside.
+     *
+     * only used for:
+     * @see NotificationLocal
+     * @see NotificationGlobal
+     *
+     * @param silent
+     */
+    public void setSilentMode(boolean silent) {
+        this.silentMode = silent;
+    }
+
+    /**
+     * Automatically set silent mode, when {@link NotificationView} get dismissed.
+     *
+     * @param auto
+     */
+    public void setAutoSilentMode(boolean auto) {
+        this.autoSilentMode = auto;
     }
 
     /**
@@ -307,6 +376,216 @@ public class NotificationEntry {
     }
 
     /**
+     * Set the progress this notification represents.
+     *
+     * @see android.app.Notification#setProgress(int, int, boolean)
+     *
+     * @param max
+     * @param progress
+     * @param indeterminate
+     */
+    public void setProgress(int max, int progress, boolean indeterminate) {
+        this.progressMax = max;
+        this.progress = progress;
+        this.progressIndeterminate = indeterminate;
+    }
+
+    /**
+     * Set a action to be fired when the notification content gets clicked.
+     *
+     * @param listener
+     */
+    public void setContentAction(Action.OnActionListener listener) {
+        setContentAction(listener, null, null, null, null);
+    }
+
+    /**
+     * Set a action to be fired when the notification content gets clicked.
+     *
+     * @param listener
+     * @param extra
+     */
+    public void setContentAction(Action.OnActionListener listener, Bundle extra) {
+        setContentAction(listener, null, null, null, extra);
+    }
+
+    /**
+     * Set a action to be fired when the notification content gets clicked.
+     *
+     * @param listener
+     * @param activity The activity to be started.
+     * @param extra Intent extra.
+     */
+    public void setContentAction(Action.OnActionListener listener, ComponentName activity, Bundle extra) {
+        setContentAction(listener, activity, null, null, extra);
+    }
+
+    /**
+     * Set a action to be fired when the notification content gets clicked.
+     *
+     * @param listener
+     * @param activity The activity to be started.
+     * @param service The service to be started.
+     * @param broadcast The broadcast to be sent.
+     * @param extra Intent extra.
+     */
+    public void setContentAction(Action.OnActionListener listener, ComponentName activity,
+                                 ComponentName service, String broadcast, Bundle extra) {
+        setContentAction(new Action(listener, activity, service, broadcast, extra));
+    }
+
+    /**
+     * Set a action to be fired when the notification content gets clicked.
+     *
+     * @param act
+     */
+    public void setContentAction(Action act) {
+        if (act.entry != null && act.entry != this) {
+            Log.e(TAG, "setContentAction failed. Already applied to another notification - " +
+                  act.entry.ID + ". Current notification is " + ID);
+            return;
+        }
+        this.contentAction = act;
+        this.contentAction.entry = this;
+        this.contentAction.title = "ContentAction";
+    }
+
+    /**
+     * Set a action to be fired when this notification gets canceled.
+     *
+     * @param listener
+     */
+    public void setCancelAction(Action.OnActionListener listener) {
+        setCancelAction(listener, null, null, null, null);
+    }
+
+    /**
+     * Set a action to be fired when this notification gets canceled.
+     *
+     * @param listener
+     * @param extra
+     */
+    public void setCancelAction(Action.OnActionListener listener, Bundle extra) {
+        setCancelAction(listener, null, null, null, extra);
+    }
+
+    /**
+     * Set a action to be fired when this notification gets canceled.
+     *
+     * @param listener
+     * @param activity The activity to be started.
+     * @param extra Intent extra.
+     */
+    public void setCancelAction(Action.OnActionListener listener, ComponentName activity,
+                                Bundle extra) {
+        setCancelAction(listener, activity, null, null, extra);
+    }
+
+    /**
+     * Set a action to be fired when this notification gets canceled.
+     *
+     * @param listener
+     * @param activity The activity to be started.
+     * @param service The service to be started.
+     * @param broadcast The broadcast to be sent.
+     * @param extra Intent extra.
+     */
+    public void setCancelAction(Action.OnActionListener listener, ComponentName activity,
+                                ComponentName service, String broadcast, Bundle extra) {
+        setCancelAction(new Action(listener, activity, service, broadcast, extra));
+    }
+
+    /**
+     * Set a action to be fired when this notification gets canceled.
+     *
+     * @param act
+     */
+    public void setCancelAction(Action act) {
+        if (act.entry != null && act.entry != this) {
+            Log.e(TAG, "setCancelAction failed. Already applied to another notification - " +
+                  act.entry.ID + ". Current notification is " + ID);
+            return;
+        }
+        this.cancelAction = act;
+        this.cancelAction.entry = this;
+        this.cancelAction.title = "CancelAction";
+    }
+
+    /**
+     * Add a action to this notification. Actions are typically displayed as a
+     * button adjacent to the notification content.
+     *
+     * @see android.app.Notification#addAction
+     *
+     * @param icon
+     * @param title
+     * @param listener
+     */
+    public void addAction(int icon, CharSequence title, Action.OnActionListener listener) {
+        addAction(icon, title, listener, null, null, null, null);
+    }
+
+    /**
+     * Add a action to this notification. Actions are typically displayed as a
+     * button adjacent to the notification content.
+     *
+     * @see android.app.Notification#addAction
+     *
+     * @param icon
+     * @param title
+     * @param listener
+     * @param extra
+     */
+    public void addAction(int icon, CharSequence title, Action.OnActionListener listener, Bundle extra) {
+        addAction(icon, title, listener, null, null, null, extra);
+    }
+
+    /**
+     * Add a action to this notification. Actions are typically displayed as a
+     * button adjacent to the notification content.
+     *
+     * @see android.app.Notification#addAction
+     *
+     * @param icon
+     * @param title
+     * @param listener
+     * @param activity The activity to be started.
+     * @param service The service to be started.
+     * @param broadcast The broadcast to be sent.
+     * @param extra
+     */
+    public void addAction(int icon, CharSequence title, Action.OnActionListener listener,
+                          ComponentName activity, ComponentName service, String broadcast,
+                          Bundle extra) {
+        addAction(new Action(icon, title, listener, activity, service, broadcast, extra));
+    }
+
+    /**
+     * Add a action to this notification. Actions are typically displayed as a
+     * button adjacent to the notification content.
+     *
+     * @see android.app.Notification#addAction
+     *
+     * @param act
+     */
+    public void addAction(Action act) {
+        if (act.entry != null && act.entry != this) {
+            Log.e(TAG, "addAction failed. Already applied to another notification - " +
+                  act.entry.ID + ". Current notification is " + ID);
+            return;
+        }
+        if (mActions == null) {
+            mActions = new ArrayList<Action>();
+        }
+        if (mActions.size() == 3) {
+            Log.w(TAG, "only suppport up to 3 actions.");
+            return;
+        }
+        act.entry = this;
+        mActions.add(act);
+    }
+
+    /**
      * Set whether to use system effect. Only for {@link NotificationRemote}. The default is true.
      *
      * If true, effects will be controlled by the system.
@@ -430,18 +709,6 @@ public class NotificationEntry {
     }
 
     /**
-     * Set activity class. Activity will be launched when the user touches it.
-     *
-     * Only used for:
-     * @see NotificationRemote
-     *
-     * @param activityClass
-     */
-    public void setActivityClass(Class<?> activityClass) {
-        this.activityClass = activityClass;
-    }
-
-    /**
      * Set whether to cancel the notification automatically when the user touches it.
      *
      * @param autoCancel
@@ -450,20 +717,31 @@ public class NotificationEntry {
         this.autoCancel = autoCancel;
     }
 
-    /**
-     * Set an object of {@link View#OnClickListener} which will be invoked when the user clicks on it.
-     *
-     * Only used for:
-     * @see NotificationLocal
-     * @see NotificationGlobal
-     *
-     * @param l
-     */
-    public void setOnClickListener(View.OnClickListener l) {
-        this.onClickListener = l;
+    // ==========================================
+
+    public boolean hasActions() {
+        return mActions != null && !mActions.isEmpty();
     }
 
-    // ==========================================
+    public ArrayList<Action> getActions() {
+        return mActions != null ? new ArrayList<Action>(mActions) : null;
+    }
+
+    public Action getAction(int idx) {
+        return mActions != null && idx >= 0 && idx < mActions.size() ? mActions.get(idx) : null;
+    }
+
+    public int getActionCount() {
+        return mActions != null ? mActions.size() : 0;
+    }
+
+    public Action getContentAction() {
+        return contentAction;
+    }
+
+    public Action getCancelAction() {
+        return cancelAction;
+    }
 
     public boolean isSentToRemote() {
         return isSentToTarget(NotificationDelegater.REMOTE);
@@ -494,13 +772,101 @@ public class NotificationEntry {
         return (mCancels & target) != 0;
     }
 
-    // cancel
-    public void cancel() {
-        synchronized (mLock) {
-            if ((mFlag & FLAG_REQUEST_CANCEL) == 0) {
-                mPrevFlag = mFlag;
-                mFlag |= FLAG_REQUEST_CANCEL;
+    void executeContentAction(Context context) {
+        contentExecuted = true;
+        if (contentAction != null) {
+            contentAction.execute(context);
+        }
+    }
+
+    void executeCancelAction(Context context) {
+        if (cancelAction != null) {
+            cancelAction.execute(context);
+        }
+    }
+
+    /**
+     * @see android.app.Notification#addAction
+     */
+    public static class Action {
+
+        public interface OnActionListener {
+            boolean onAction(NotificationEntry entry, Action action);
+        }
+
+        public int icon;
+        public CharSequence title;
+
+        NotificationEntry entry;
+        OnActionListener listener;
+        Bundle extra;
+
+        ComponentName activity;
+        ComponentName service;
+        String broadcast;
+
+        public Action(OnActionListener listener, ComponentName activity,
+                      ComponentName service, String broadcast, Bundle extra) {
+            this.listener = listener;
+            this.activity = activity;
+            this.service = service;
+            this.broadcast = broadcast;
+            this.extra = extra;
+        }
+
+        public Action(int icon, CharSequence title, OnActionListener listener,
+                      ComponentName activity, ComponentName service, String broadcast,
+                      Bundle extra) {
+            this.icon = icon;
+            this.title = title;
+            this.listener = listener;
+            this.activity = activity;
+            this.service = service;
+            this.broadcast = broadcast;
+            this.extra = extra;
+        }
+
+        public Bundle extra() {
+            if (extra == null) {
+                extra = new Bundle();
             }
+            return extra;
+        }
+
+        public void execute(Context context) {
+            if (DBG) Log.v(TAG, "execute action - " + toString());
+            if (listener != null && listener.onAction(entry, this)) {
+                return;
+            }
+            if (broadcast != null) {
+                Intent intent = new Intent(broadcast);
+                if (extra != null) {
+                    intent.putExtra(KEY_EXTRA, extra);
+                }
+                context.sendBroadcast(intent);
+            }
+            if (activity != null) {
+                Intent intent = new Intent();
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.setComponent(activity);
+                if (extra != null) {
+                    intent.putExtra(KEY_EXTRA, extra);
+                }
+                context.startActivity(intent);
+            }
+            if (service != null) {
+                Intent intent = new Intent();
+                intent.setComponent(service);
+                if (extra != null) {
+                    intent.putExtra(KEY_EXTRA, extra);
+                }
+                context.startService(intent);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return (String) title;
         }
     }
 
@@ -531,22 +897,58 @@ public class NotificationEntry {
     static final int FLAG_SEND_IGNORED       = 0x00000008;
     static final int FLAG_REQUEST_CANCEL     = 0x00000010;
     static final int FLAG_CANCEL_FINISHED    = 0x00000020;
+    static final int FLAG_REQUEST_UPDATE     = 0x00000100;
+    static final int FLAG_UPDATE_FINISHED    = 0x00000200;
+
+    final Object mLock = new Object();
 
     int mFlag;
     int mPrevFlag;
     int mTargets;
     int mCancels;
+    int mUpdates;
+    int mIgnores;
     int mEffectConsumers;
     boolean mSendToListener;
-    final Object mLock = new Object();
+    boolean mUpdate;
+    boolean mSent;
+    boolean contentExecuted;
 
     private NotificationEntry(int id) {
         ID = id;
-        mFlag = FLAG_REQUEST_SEND;
         mPrevFlag = 0;
         mTargets = 0;
         mEffectConsumers = 0;
         mSendToListener = true;
+    }
+
+    void requestSend() {
+        if (hasFlag(FLAG_REQUEST_SEND)) {
+            addFlag(FLAG_REQUEST_UPDATE);
+            mUpdate = true;
+            mUpdates = 0;
+        } else {
+            addFlag(FLAG_REQUEST_SEND);
+        }
+    }
+
+    void requestCancel() {
+        addFlag(FLAG_REQUEST_CANCEL);
+    }
+
+    boolean hasFlag(int flag) {
+        synchronized (mLock) {
+            return (mFlag & flag) != 0;
+        }
+    }
+
+    void addFlag(int flag) {
+        synchronized (mLock) {
+            if ((mFlag & flag) == 0) {
+                mPrevFlag = mFlag;
+                mFlag |= flag;
+            }
+        }
     }
 
     private static int sID = 0;
@@ -589,7 +991,7 @@ public class NotificationEntry {
         sb.append(", text=").append(text);
         sb.append(", backgroundColor=").append(backgroundColor);
         sb.append(", backgroundAlpha=").append(backgroundAlpha);
-        sb.append(", activityClass=").append(activityClass);
+        sb.append(", hasActions=").append(hasActions());
         sb.append(", extra=").append(extra);
         sb.append(", obj=").append(obj);
         sb.append(", systemEffect=").append(useSystemEffect);

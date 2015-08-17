@@ -20,12 +20,8 @@ import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageSwitcher;
-import android.widget.ImageView;
-import android.widget.TextSwitcher;
-import android.widget.TextView;
 
-import zemin.notification.NotificationView.ChildView;
+import java.util.Collection;
 
 /**
  * Callback for {@link NotificationView}. This is the default implementation.
@@ -35,12 +31,21 @@ public class NotificationViewCallback {
     private static final String TAG = "zemin.NotificationViewCallback";
     public static boolean DBG;
 
+    public static final String ICON       = "icon";
+    public static final String TITLE      = "title";
+    public static final String TEXT       = "text";
+    public static final String WHEN       = "when";
+    // public static final int PROGRESS   = 4;
+    // add more..
+
     /**
      * Called only once after this callback is set.
      *
      * @param view
      */
     public void onViewSetup(NotificationView view) {
+        if (DBG) Log.v(TAG, "onViewSetup");
+
         view.setCornerRadius(8.0f);
         view.setContentMargin(50, 50, 50, 50);
         view.setShadowEnabled(true);
@@ -65,22 +70,29 @@ public class NotificationViewCallback {
      * @param layoutId
      */
     public void onContentViewChanged(NotificationView view, View contentView, int layoutId) {
+        if (DBG) Log.v(TAG, "onContentViewChanged");
+
+        ChildViewManager mgr = view.getChildViewManager();
 
         if (layoutId == R.layout.notification_simple ||
             layoutId == R.layout.notification_large_icon ||
             layoutId == R.layout.notification_full) {
 
-            view.setChildViewSwitcher(ChildView.ICON, R.id.switcher_icon);
-            view.setChildViewSwitcher(ChildView.TITLE, R.id.switcher_title);
-            view.setChildViewSwitcher(ChildView.TEXT, R.id.switcher_text);
-            view.setChildViewSwitcher(ChildView.WHEN, R.id.switcher_when);
+            view.setNotificationTransitionEnabled(false);
+
+            mgr.setView(ICON, contentView.findViewById(R.id.switcher_icon));
+            mgr.setView(TITLE, contentView.findViewById(R.id.switcher_title));
+            mgr.setView(TEXT, contentView.findViewById(R.id.switcher_text));
+            mgr.setView(WHEN, contentView.findViewById(R.id.switcher_when));
 
         } else if (layoutId == R.layout.notification_simple_2) {
 
-            view.setChildView(ChildView.ICON, R.id.icon);
-            view.setChildView(ChildView.TITLE, R.id.title);
-            view.setChildView(ChildView.TEXT, R.id.text);
-            view.setChildView(ChildView.WHEN, R.id.when);
+            view.setNotificationTransitionEnabled(true);
+
+            mgr.setView(ICON, contentView.findViewById(R.id.icon));
+            mgr.setView(TITLE, contentView.findViewById(R.id.title));
+            mgr.setView(TEXT, contentView.findViewById(R.id.text));
+            mgr.setView(WHEN, contentView.findViewById(R.id.when));
         }
     }
 
@@ -94,56 +106,64 @@ public class NotificationViewCallback {
      * @param layoutId
      */
     public void onShowNotification(NotificationView view, View contentView, NotificationEntry entry, int layoutId) {
+        if (DBG) Log.v(TAG, "onShowNotification - " + entry.ID);
 
         final Drawable icon = entry.iconDrawable;
         final CharSequence title = entry.title;
         final CharSequence text = entry.text;
         final CharSequence when = entry.showWhen ? entry.whenFormatted : null;
 
-        boolean titleChanged = true;
-        boolean contentChanged = view.isContentLayoutChanged();
-        NotificationEntry lastEntry = view.getLastNotification();
+        ChildViewManager mgr = view.getChildViewManager();
 
-        if (layoutId == R.layout.notification_simple_2) {
-            view.getContentViewSwitcher().start();
-        }
+        if (layoutId == R.layout.notification_simple ||
+            layoutId == R.layout.notification_large_icon ||
+            layoutId == R.layout.notification_full) {
 
-        if (!contentChanged && title != null &&
-            lastEntry != null && title.equals(lastEntry.title)) {
-            titleChanged = false;
-        }
+            boolean titleChanged = true;
+            boolean contentChanged = view.isContentLayoutChanged();
+            NotificationEntry lastEntry = view.getLastNotification();
 
-        if (icon != null) {
-            view.showChildView(ChildView.ICON);
-            if (titleChanged) {
-                view.setChildViewImageDrawable(ChildView.ICON, icon);
+            if (!contentChanged && title != null &&
+                lastEntry != null && title.equals(lastEntry.title)) {
+                titleChanged = false;
             }
-        } else {
-            view.hideChildView(ChildView.ICON);
-        }
 
-        if (title != null) {
-            view.showChildView(ChildView.TITLE);
-            if (titleChanged) {
-                view.setChildViewText(ChildView.TITLE, title);
-            }
-        } else {
-            view.hideChildView(ChildView.TITLE);
-        }
+            mgr.setImageDrawable(ICON, icon, titleChanged);
+            mgr.setText(TITLE, title, titleChanged);
+            mgr.setText(TEXT, text);
+            mgr.setText(WHEN, when);
 
-        if (text != null) {
-            view.showChildView(ChildView.TEXT);
-            view.setChildViewText(ChildView.TEXT, text);
-        } else {
-            view.hideChildView(ChildView.TEXT);
-        }
+        } else if (layoutId == R.layout.notification_simple_2) {
 
-        if (when != null) {
-            view.showChildView(ChildView.WHEN);
-            view.setChildViewText(ChildView.WHEN, when);
-        } else {
-            view.hideChildView(ChildView.WHEN);
+            mgr.setImageDrawable(ICON, icon);
+            mgr.setText(TITLE, title);
+            mgr.setText(TEXT, text);
+            mgr.setText(WHEN, when);
         }
+    }
+
+    /**
+     * Called when a notification is being updated.
+     *
+     * @param view
+     * @param contentView
+     * @param entry
+     * @param layoutId
+     */
+    public void onUpdateNotification(NotificationView view, View contentView, NotificationEntry entry, int layoutId) {
+        if (DBG) Log.v(TAG, "onUpdateNotification - " + entry.ID);
+
+        final Drawable icon = entry.iconDrawable;
+        final CharSequence title = entry.title;
+        final CharSequence text = entry.text;
+        final CharSequence when = entry.showWhen ? entry.whenFormatted : null;
+
+        ChildViewManager mgr = view.getChildViewManager();
+
+        mgr.setImageDrawable(ICON, icon, false);
+        mgr.setText(TITLE, title, false);
+        mgr.setText(TEXT, text, false);
+        mgr.setText(WHEN, when, false);
     }
 
     /**
@@ -155,5 +175,6 @@ public class NotificationViewCallback {
      * @return boolean true, if handled.
      */
     public void onClickContentView(NotificationView view, View contentView, NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "onClickContentView - " + entry.ID);
     }
 }

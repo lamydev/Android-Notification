@@ -24,6 +24,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.support.v4.app.NotificationCompat;
 
+import java.util.ArrayList;
+
 /**
  * Callback for {@link NotificationRemote}. This is the default implementation.
  */
@@ -38,18 +40,7 @@ public class NotificationRemoteCallback {
      * @param remote
      */
     public void onRemoteSetup(NotificationRemote remote) {
-    }
-
-    /**
-     * Called when receiving a broadcast.
-     *
-     * @param remote
-     * @param intent
-     * @param entry
-     * @return boolean true, if handled.
-     */
-    public boolean onReceive(NotificationRemote remote, Intent intent, NotificationEntry entry) {
-        return false;
+        if (DBG) Log.v(TAG, "onRemoteSetup");
     }
 
     /**
@@ -61,13 +52,14 @@ public class NotificationRemoteCallback {
      * @return Notification
      */
     public Notification makeStatusBarNotification(NotificationRemote remote, NotificationEntry entry, int layoutId) {
+        if (DBG) Log.v(TAG, "makeStatusBarNotification - " + entry.ID);
 
         final int entryId = entry.ID;
         final CharSequence title = entry.title;
         final CharSequence text = entry.text;
         CharSequence tickerText = entry.tickerText;
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(remote.getContext());
+        NotificationCompat.Builder builder = remote.getStatusBarNotificationBuilder();
         if (entry.smallIconRes > 0) {
             builder.setSmallIcon(entry.smallIconRes);
         } else {
@@ -92,15 +84,21 @@ public class NotificationRemoteCallback {
             builder.setWhen(entry.whenLong);
         }
 
-        PendingIntent deleteIntent = remote.getDeleteIntent(entryId);
-        builder.setDeleteIntent(deleteIntent);
+        if (entry.progressMax != 0 || entry.progressIndeterminate) {
+            builder.setProgress(entry.progressMax, entry.progress, entry.progressIndeterminate);
+        }
 
-        PendingIntent contentIntent = remote.getContentIntent(
-            entryId, entry.activityClass, entry.extra, entry.autoCancel);
-        builder.setContentIntent(contentIntent);
         builder.setAutoCancel(entry.autoCancel);
-
         builder.setOngoing(entry.ongoing);
+        builder.setDeleteIntent(remote.getDeleteIntent(entry));
+        builder.setContentIntent(remote.getContentIntent(entry));
+
+        if (entry.hasActions()) {
+            ArrayList<NotificationEntry.Action> actions = entry.getActions();
+            for (NotificationEntry.Action act : actions) {
+                builder.addAction(act.icon, act.title, remote.getActionIntent(entry, act));
+            }
+        }
 
         if (entry.useSystemEffect) {
             int defaults = 0;
@@ -126,5 +124,50 @@ public class NotificationRemoteCallback {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Called when notification is clicked.
+     *
+     * @param remote
+     * @param entry
+     */
+    public void onClickRemote(NotificationRemote remote, NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "onClickRemote - " + entry.ID);
+    }
+
+    /**
+     * Called when notification is canceled.
+     *
+     * @param remote
+     * @param entry
+     */
+    public void onCancelRemote(NotificationRemote remote, NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "onCancelRemote - " + entry.ID);
+    }
+
+    /**
+     * Called when notification action view is clicked.
+     *
+     * @param remote
+     * @param entry
+     * @param act
+     */
+    public void onClickRemoteAction(NotificationRemote remote, NotificationEntry entry,
+                                    NotificationEntry.Action act) {
+        if (DBG) Log.v(TAG, "onClickRemoteAction - " + entry.ID + ", " + act);
+    }
+
+    /**
+     * Called when receiving a broadcast.
+     *
+     * @param remote
+     * @param entry
+     * @param intent
+     * @param intentAction
+     */
+    public void onReceive(NotificationRemote remote, NotificationEntry entry,
+                          Intent intent, String intentAction) {
+        if (DBG) Log.d(TAG, "onReceive - " + entry.ID + ", " + intentAction);
     }
 }

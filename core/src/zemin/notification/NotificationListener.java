@@ -26,16 +26,23 @@ package zemin.notification;
 public interface NotificationListener {
 
     /**
-     * called when a notification arrives.
+     * Called when a notification arrives.
      *
      * @param entry
      */
     void onArrival(NotificationEntry entry);
 
     /**
-     * called when a notification is canceled.
+     * Called when a notification is canceled.
      *
      * @param entry
      */
     void onCancel(NotificationEntry entry);
+
+    /**
+     * Called when a notification is updated.
+     *
+     * @param entry
+     */
+    void onUpdate(NotificationEntry entry);
 }

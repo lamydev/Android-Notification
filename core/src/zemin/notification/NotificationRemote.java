@@ -27,6 +27,8 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.util.Log;
 
+import android.support.v4.app.NotificationCompat;
+
 /**
  * Status-bar notification.
  */
@@ -41,15 +43,17 @@ public class NotificationRemote extends NotificationHandler {
     public static final String ACTION_CONTENT =
         "notification.intent.action.notificationremote.content";
 
-    public static final String KEY_ENTRY_ID = "entry_id";
-    public static final String KEY_CLASS = "class_name";
-    public static final String KEY_EXTRA = "extra_bundle";
-    public static final String KEY_AUTO_CANCEL = "auto_cancel";
+    public static final String ACTION_ACTION =
+        "notification.intent.action.notificationremote.action";
+
+    public static final String KEY_ENTRY_ID = "key_entry_id";
+    public static final String KEY_ACTION_ID = "key_action_id";
 
     private static int sID = 0;
 
     private NotificationRemoteCallback mCallback;
     private NotificationManager mManager;
+    private NotificationCompat.Builder mBuilder;
     private Receiver mReceiver;
     private IntentFilter mFilter;
     private boolean mListening;
@@ -98,8 +102,20 @@ public class NotificationRemote extends NotificationHandler {
      *
      * @return int
      */
-    public int genId() {
+    public int genIdForPendingIntent() {
         return sID++;
+    }
+
+    /**
+     * Get builder for {@link android.app.Notification}.
+     *
+     * @return NotificationCompat#Builder
+     */
+    public NotificationCompat.Builder getStatusBarNotificationBuilder() {
+        if (mBuilder == null) {
+            mBuilder = new NotificationCompat.Builder(mContext);
+        }
+        return mBuilder;
     }
 
     /**
@@ -107,13 +123,13 @@ public class NotificationRemote extends NotificationHandler {
      *
      * @see android.app.Notification#setDeleteIntent(PendingIntent)
      *
-     * @param entryId
+     * @param entry
      * @return PendingIntent
      */
-    public PendingIntent getDeleteIntent(int entryId) {
+    public PendingIntent getDeleteIntent(NotificationEntry entry) {
         Intent intent = new Intent(ACTION_CANCEL);
-        intent.putExtra(KEY_ENTRY_ID, entryId);
-        return PendingIntent.getBroadcast(mContext, genId(), intent, 0);
+        intent.putExtra(KEY_ENTRY_ID, entry.ID);
+        return PendingIntent.getBroadcast(mContext, genIdForPendingIntent(), intent, 0);
     }
 
     /**
@@ -121,25 +137,29 @@ public class NotificationRemote extends NotificationHandler {
      *
      * @see android.app.Notification#setContentIntent(PendingIntent)
      *
-     * @param entryId
-     * @param activityClass
-     * @param extra
-     * @param autoCancel
+     * @param entry
      * @return PedningIntent
      */
-    public PendingIntent getContentIntent(
-        int entryId, Class activityClass, Bundle extra, boolean autoCancel) {
-
+    public PendingIntent getContentIntent(NotificationEntry entry) {
         Intent intent = new Intent(ACTION_CONTENT);
-        intent.putExtra(KEY_ENTRY_ID, entryId);
-        intent.putExtra(KEY_AUTO_CANCEL, autoCancel);
-        if (activityClass != null) {
-            intent.putExtra(KEY_CLASS, activityClass.getName());
-        }
-        if (extra != null) {
-            intent.putExtra(KEY_EXTRA, extra);
-        }
-        return PendingIntent.getBroadcast(mContext, genId(), intent, 0);
+        intent.putExtra(KEY_ENTRY_ID, entry.ID);
+        return PendingIntent.getBroadcast(mContext, genIdForPendingIntent(), intent, 0);
+    }
+
+    /**
+     * Create an PendingIntent to be fired when the notification action is invoked.
+     *
+     * @see android.app.Notification#addAction(int, CharSequence, PendingIntent)
+     *
+     * @param entry
+     * @param act
+     * @return PendingIntent
+     */
+    public PendingIntent getActionIntent(NotificationEntry entry, NotificationEntry.Action act) {
+        Intent intent = new Intent(ACTION_ACTION);
+        intent.putExtra(KEY_ENTRY_ID, entry.ID);
+        intent.putExtra(KEY_ACTION_ID, entry.mActions.indexOf(act));
+        return PendingIntent.getBroadcast(mContext, genIdForPendingIntent(), intent, 0);
     }
 
     @Override
@@ -182,6 +202,11 @@ public class NotificationRemote extends NotificationHandler {
         onSendFinished(entry);
     }
 
+    @Override
+    protected void onUpdate(NotificationEntry entry) {
+        onArrival(entry);
+    }
+
     private void onCanceledRemotely(NotificationEntry entry) {
         reportCanceled(entry);
     }
@@ -191,6 +216,7 @@ public class NotificationRemote extends NotificationHandler {
             IntentFilter filter = getFilter();
             filter.addAction(ACTION_CANCEL);
             filter.addAction(ACTION_CONTENT);
+            filter.addAction(ACTION_ACTION);
             mContext.registerReceiver(mReceiver, filter, null, this);
             mListening = true;
         }
@@ -218,31 +244,25 @@ public class NotificationRemote extends NotificationHandler {
 
             final String action = intent.getAction();
             final int entryId = intent.getIntExtra(KEY_ENTRY_ID, -1);
-            final NotificationEntry entry = getEntry(entryId);
-            if (DBG) Log.d(TAG, "onReceive - action=" + action + ", entryId=" + entryId);
+            final NotificationEntry entry = getNotification(entryId);
+            if (DBG) Log.d(TAG, "onReceive - " + entryId + ", " + action);
 
             if (ACTION_CANCEL.equals(action)) {
                 onCanceledRemotely(entry);
+                mCallback.onCancelRemote(NotificationRemote.this, entry);
             } else if (ACTION_CONTENT.equals(action)) {
-                if (intent.getBooleanExtra(KEY_AUTO_CANCEL, true)) {
+                entry.executeContentAction(mContext);
+                mCallback.onClickRemote(NotificationRemote.this, entry);
+                if (entry.autoCancel) {
                     onCanceledRemotely(entry);
                 }
-            }
-
-            if (mCallback.onReceive(NotificationRemote.this, intent, entry)) {
-                return;
-            }
-
-            if (ACTION_CONTENT.equals(action)) {
-                final String className = intent.getStringExtra(KEY_CLASS);
-                final Bundle extra = intent.getBundleExtra(KEY_EXTRA);
-                if (className != null) {
-                    Intent activityIntent = new Intent();
-                    activityIntent.setClassName(mContext.getPackageName(), className);
-                    activityIntent.putExtras(extra);
-                    activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    mContext.startActivity(activityIntent);
-                }
+            } else if (ACTION_ACTION.equals(action)) {
+                final int actionId = intent.getIntExtra(KEY_ACTION_ID, -1);
+                final NotificationEntry.Action act = entry.mActions.get(actionId);
+                mCallback.onClickRemoteAction(NotificationRemote.this, entry, act);
+                act.execute(mContext);
+            } else {
+                mCallback.onReceive(NotificationRemote.this, entry, intent, action);
             }
         }
     }

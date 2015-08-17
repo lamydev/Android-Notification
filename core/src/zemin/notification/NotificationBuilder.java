@@ -16,6 +16,7 @@
 
 package zemin.notification;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
@@ -24,6 +25,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 
+import zemin.notification.NotificationEntry.Action;
+
 /**
  * A builder class for {@link NotificationEntry} objects.
  */
@@ -31,15 +34,6 @@ public class NotificationBuilder {
 
     private static final String TAG = "zemin.NotificationBuilder";
     public static boolean DBG;
-
-    /**
-     * Create an empty {@link NotificationEntry}.
-     *
-     * @return NotificationEntry
-     */
-    public static NotificationEntry emptyNotification() {
-        return NotificationEntry.create();
-    }
 
     /**
      * Get builder v1 for constructing local notifications.
@@ -67,6 +61,16 @@ public class NotificationBuilder {
      * @return V2
      */
     public static V2 remote() { V2 v = new V2(); v.N.sendToRemote(true); return v; }
+
+    /**
+     * Get builder v1 for constructing empty notifications.
+     * Only {@link NotificationListener} will receive them.
+     *
+     * @see NotificationEntry
+     *
+     * @return V1
+     */
+    public static V1 empty() { V1 v = new V1(); return v; }
 
     /**
      * Build {@link NotificationEntry} objects to display on {@link NotificationView}.
@@ -107,6 +111,43 @@ public class NotificationBuilder {
          */
         public V1 setOngoing(boolean ongoing) {
             N.setOngoing(ongoing);
+            return this;
+        }
+
+        /**
+         * Set whether this is an "no-history" notification. A no-history notification
+         * is canceled immediately when the {@link NotificationView} presenting it is
+         * dismissed.
+         *
+         * @param nohistory
+         */
+        public V1 setNohistory(boolean nohistory) {
+            N.setNohistory(nohistory);
+            return this;
+        }
+
+        /**
+         * Set whether to be in the silent mode.
+         * In silent mode, any update of the notification won't be presented to the user.
+         * In other word, {@link NotificationView} is not displayed for this notification.
+         * To check the update, you can use {@link NotificationBoard} on which all the current
+         * notifications reside.
+         *
+         * @param silent
+         */
+        public V1 setSilentMode(boolean silent) {
+            N.setSilentMode(silent);
+            return this;
+        }
+
+        /**
+         * Set whether to set silent mode automatically when {@link NotificationView}
+         * get dismissed.
+         *
+         * @param auto
+         */
+        public V1 setAutoSilentMode(boolean auto) {
+            N.setAutoSilentMode(auto);
             return this;
         }
 
@@ -232,6 +273,189 @@ public class NotificationBuilder {
         }
 
         /**
+         * Set the progress this notification represents.
+         *
+         * @param max
+         * @param progress
+         * @param indeterminate
+         */
+        public V1 setProgress(int max, int progress, boolean indeterminate) {
+            N.setProgress(max, progress, indeterminate);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param listener
+         */
+        public V1 setContentAction(Action.OnActionListener listener) {
+            N.setContentAction(listener);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param listener
+         * @param extra
+         */
+        public V1 setContentAction(Action.OnActionListener listener, Bundle extra) {
+            N.setContentAction(listener, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param listener
+         * @param activity The activity to be started.
+         * @param extra Intent extra.
+         */
+        public V1 setContentAction(Action.OnActionListener listener, ComponentName activity, Bundle extra) {
+            N.setContentAction(listener, activity, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param listener
+         * @param activity The activity to be started.
+         * @param service The service to be started.
+         * @param broadcast The broadcast to be sent.
+         * @param extra Intent extra.
+         */
+        public V1 setContentAction(Action.OnActionListener listener, ComponentName activity,
+                                   ComponentName service, String broadcast, Bundle extra) {
+            N.setContentAction(listener, activity, service, broadcast, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param act
+         */
+        public V1 setContentAction(Action act) {
+            N.setContentAction(act);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param listener
+         */
+        public V1 setCancelAction(Action.OnActionListener listener) {
+            N.setCancelAction(listener);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param listener
+         * @param extra
+         */
+        public V1 setCancelAction(Action.OnActionListener listener, Bundle extra) {
+            N.setCancelAction(listener, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param listener
+         * @param activity The activity to be started.
+         * @param extra Intent extra.
+         */
+        public V1 setCancelAction(Action.OnActionListener listener, ComponentName activity, Bundle extra) {
+            N.setCancelAction(listener, activity, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param listener
+         * @param activity The activity to be started.
+         * @param service The service to be started.
+         * @param broadcast The broadcast to be sent.
+         * @param extra Intent extra.
+         */
+        public V1 setCancelAction(Action.OnActionListener listener, ComponentName activity,
+                                  ComponentName service, String broadcast, Bundle extra) {
+            N.setCancelAction(listener, activity, service, broadcast, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param act
+         */
+        public V1 setCancelAction(Action act) {
+            N.setCancelAction(act);
+            return this;
+        }
+
+        /**
+         * Add a action to this notification. Actions are typically displayed as a
+         * button adjacent to the notification content.
+         *
+         * @see android.app.Notification#addAction
+         *
+         * @param icon
+         * @param title
+         * @param listener
+         */
+        public V1 addAction(int icon, CharSequence title, Action.OnActionListener listener) {
+            N.addAction(icon, title, listener);
+            return this;
+        }
+
+        /**
+         * Add a action to this notification. Actions are typically displayed as a
+         * button adjacent to the notification content.
+         *
+         * @param icon
+         * @param title
+         * @param listener
+         */
+        public V1 addAction(int icon, CharSequence title, Action.OnActionListener listener, Bundle extra) {
+            N.addAction(icon, title, listener, extra);
+            return this;
+        }
+
+        /**
+         * Add a action to this notification. Actions are typically displayed as a
+         * button adjacent to the notification content.
+         *
+         * @param icon
+         * @param title
+         * @param listener
+         * @param extra
+         */
+        public V1 addAction(int icon, CharSequence title, Action.OnActionListener listener,
+                            ComponentName activity, ComponentName service, String broadcast,
+                            Bundle extra) {
+            N.addAction(icon, title, listener, activity, service, broadcast, extra);
+            return this;
+        }
+
+        /**
+         * Add a action to this notification. Actions are typically displayed as a
+         * button adjacent to the notification content.
+         *
+         * @param action
+         */
+        public V1 addAction(Action action) {
+            N.addAction(action);
+            return this;
+        }
+
+        /**
          * Set whether to play ringtone.
          *
          * @param play
@@ -330,16 +554,6 @@ public class NotificationBuilder {
          */
         public V1 setAutoCancel(boolean autoCancel) {
             N.setAutoCancel(autoCancel);
-            return this;
-        }
-
-        /**
-         * Set an object of {@link View#OnClickListener} which will be invoked when the user clicks on it.
-         *
-         * @param l
-         */
-        public V1 setOnClickListener(View.OnClickListener l) {
-            N.setOnClickListener(l);
             return this;
         }
     }
@@ -465,6 +679,191 @@ public class NotificationBuilder {
         }
 
         /**
+         * Set the progress this notification represents.
+         *
+         * @see android.app.Notification#setProgress(int, int, boolean)
+         *
+         * @param max
+         * @param progress
+         * @param indeterminate
+         */
+        public V2 setProgress(int max, int progress, boolean indeterminate) {
+            N.setProgress(max, progress, indeterminate);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param listener
+         */
+        public V2 setContentAction(Action.OnActionListener listener) {
+            N.setContentAction(listener);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param listener
+         * @param extra
+         */
+        public V2 setContentAction(Action.OnActionListener listener, Bundle extra) {
+            N.setContentAction(listener, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param listener
+         * @param activity The activity to be started.
+         * @param extra Intent extra.
+         */
+        public V2 setContentAction(Action.OnActionListener listener, ComponentName activity, Bundle extra) {
+            N.setContentAction(listener, activity, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param listener
+         * @param activity The activity to be started.
+         * @param service The service to be started.
+         * @param broadcast The broadcast to be sent.
+         * @param extra Intent extra.
+         */
+        public V2 setContentAction(Action.OnActionListener listener, ComponentName activity,
+                                   ComponentName service, String broadcast, Bundle extra) {
+            N.setContentAction(listener, activity, service, broadcast, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when the notification content gets clicked.
+         *
+         * @param act
+         */
+        public V2 setContentAction(Action act) {
+            N.setContentAction(act);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param listener
+         */
+        public V2 setCancelAction(Action.OnActionListener listener) {
+            N.setCancelAction(listener);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param listener
+         * @param extra
+         */
+        public V2 setCancelAction(Action.OnActionListener listener, Bundle extra) {
+            N.setCancelAction(listener, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param listener
+         * @param activity The activity to be started.
+         * @param extra Intent extra.
+         */
+        public V2 setCancelAction(Action.OnActionListener listener, ComponentName activity, Bundle extra) {
+            N.setCancelAction(listener, activity, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param listener
+         * @param activity The activity to be started.
+         * @param service The service to be started.
+         * @param broadcast The broadcast to be sent.
+         * @param extra Intent extra.
+         */
+        public V2 setCancelAction(Action.OnActionListener listener, ComponentName activity,
+                                  ComponentName service, String broadcast, Bundle extra) {
+            N.setCancelAction(listener, activity, service, broadcast, extra);
+            return this;
+        }
+
+        /**
+         * Set a action to be fired when this notification gets canceled.
+         *
+         * @param act
+         */
+        public V2 setCancelAction(Action act) {
+            N.setCancelAction(act);
+            return this;
+        }
+
+        /**
+         * Add a action to this notification. Actions are typically displayed as a
+         * button adjacent to the notification content.
+         *
+         * @see android.app.Notification#addAction
+         *
+         * @param icon
+         * @param title
+         * @param listener
+         */
+        public V2 addAction(int icon, CharSequence title, Action.OnActionListener listener) {
+            N.addAction(icon, title, listener);
+            return this;
+        }
+
+        /**
+         * Add a action to this notification. Actions are typically displayed as a
+         * button adjacent to the notification content.
+         *
+         * @param icon
+         * @param title
+         * @param listener
+         */
+        public V2 addAction(int icon, CharSequence title, Action.OnActionListener listener, Bundle extra) {
+            N.addAction(icon, title, listener, extra);
+            return this;
+        }
+
+        /**
+         * Add a action to this notification. Actions are typically displayed as a
+         * button adjacent to the notification content.
+         *
+         * @param icon
+         * @param title
+         * @param listener
+         * @param extra
+         */
+        public V2 addAction(int icon, CharSequence title, Action.OnActionListener listener,
+                            ComponentName activity, ComponentName service, String broadcast,
+                            Bundle extra) {
+            N.addAction(icon, title, listener, activity, service, broadcast, extra);
+            return this;
+        }
+
+        /**
+         * Add a action to this notification. Actions are typically displayed as a
+         * button adjacent to the notification content.
+         *
+         * @param action
+         */
+        public V2 addAction(Action action) {
+            N.addAction(action);
+            return this;
+        }
+
+        /**
          * Set whether to use system effect.
          *
          * @param use
@@ -543,16 +942,6 @@ public class NotificationBuilder {
          */
         public V2 setExtra(Bundle extra) {
             N.setExtra(extra);
-            return this;
-        }
-
-        /**
-         * Set activity class. Activity will be launched when the user touches it.
-         *
-         * @param activityClass
-         */
-        public V2 setActivityClass(Class activityClass) {
-            N.setActivityClass(activityClass);
             return this;
         }
 

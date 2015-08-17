@@ -20,10 +20,15 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+
 import zemin.notification.NotificationBoard.RowView;
+import zemin.notification.NotificationEntry.Action;
 
 /**
  * Callback for {@link NotificationBoard}. This is the default implementation.
@@ -39,6 +44,7 @@ public class NotificationBoardCallback {
      * @param board
      */
     public void onBoardSetup(NotificationBoard board) {
+        if (DBG) Log.v(TAG, "onBoardSetup");
 
         LayoutInflater inflater = board.getInflater();
         View footer = inflater.inflate(R.layout.notification_board_footer, null, false);
@@ -105,11 +111,62 @@ public class NotificationBoardCallback {
      * @param entry
      */
     public void onRowViewAdded(NotificationBoard board, RowView rowView, NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "onRowViewAdded - " + entry.ID);
+
+        if (entry.hasActions()) {
+            ArrayList<Action> actions = entry.getActions();
+            ViewGroup vg = (ViewGroup) rowView.findViewById(R.id.actions);
+            vg.setVisibility(View.VISIBLE);
+            vg = (ViewGroup) vg.getChildAt(0);
+
+            final View.OnClickListener onClickListener = new View.OnClickListener() {
+
+                    @Override
+                    public void onClick(View view) {
+                        Action act = (Action) view.getTag();
+                        onClickActionView(act.entry, act, view);
+                        act.execute(view.getContext());
+                    }
+                };
+
+            for (int i = 0, count = actions.size(); i < count; i++) {
+                Action act = actions.get(i);
+                Button actionBtn = (Button) vg.getChildAt(i);
+                actionBtn.setVisibility(View.VISIBLE);
+                actionBtn.setTag(act);
+                actionBtn.setText(act.title);
+                actionBtn.setOnClickListener(onClickListener);
+                actionBtn.setCompoundDrawablesWithIntrinsicBounds(act.icon, 0, 0, 0);
+            }
+        }
+    }
+
+    /**
+     * Called when a row view is removed from the board.
+     *
+     * @param board
+     * @param rowView
+     * @param entry
+     */
+    public void onRowViewRemoved(NotificationBoard board, RowView rowView, NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "onRowViewRemoved - " + entry.ID);
+    }
+
+    /**
+     * Called when a row view is being updated.
+     *
+     * @param board
+     * @param rowView
+     * @param entry
+     */
+    public void onRowViewUpdate(NotificationBoard board, RowView rowView, NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "onRowViewUpdate - " + entry.ID);
 
         ImageView iconView = (ImageView) rowView.findViewById(R.id.icon);
         TextView titleView = (TextView) rowView.findViewById(R.id.title);
         TextView textView = (TextView) rowView.findViewById(R.id.text);
         TextView whenView = (TextView) rowView.findViewById(R.id.when);
+        ProgressBar bar = (ProgressBar) rowView.findViewById(R.id.progress);
 
         if (entry.iconDrawable != null) {
             iconView.setImageDrawable(entry.iconDrawable);
@@ -125,16 +182,18 @@ public class NotificationBoardCallback {
         if (entry.showWhen) {
             whenView.setText(entry.whenFormatted);
         }
-    }
 
-    /**
-     * Called when a row view is removed from the board.
-     *
-     * @param board
-     * @param rowView
-     * @param entry
-     */
-    public void onRowViewRemoved(NotificationBoard board, RowView rowView, NotificationEntry entry) {
+        if (entry.progressMax != 0 || entry.progressIndeterminate) {
+            bar.setVisibility(View.VISIBLE);
+            bar.setIndeterminate(entry.progressIndeterminate);
+            if (!entry.progressIndeterminate) {
+                bar.setMax(entry.progressMax);
+                bar.setProgress(entry.progress);
+            }
+        } else {
+            bar.setVisibility(View.GONE);
+        }
+
     }
 
     /**
@@ -145,6 +204,7 @@ public class NotificationBoardCallback {
      * @param entry
      */
     public void onClickRowView(NotificationBoard board, RowView rowView, NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "onClickRowView - " + entry.ID);
     }
 
     /**
@@ -154,5 +214,10 @@ public class NotificationBoardCallback {
      * @param clearView
      */
     public void onClickClearView(NotificationBoard board, View clearView) {
+        if (DBG) Log.v(TAG, "onClickClearView");
+    }
+
+    public void onClickActionView(NotificationEntry entry, Action act, View actionView) {
+        if (DBG) Log.v(TAG, "onClickActionView - " + entry.ID + ", " + act);
     }
 }

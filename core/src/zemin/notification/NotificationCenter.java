@@ -27,6 +27,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Notification center.
@@ -36,9 +37,6 @@ public class NotificationCenter {
     private static final String TAG = "zemin.NotificationCenter";
     public static boolean DBG;
 
-    private final ArrayMap<Integer, NotificationEntry> mEntries =
-        new ArrayMap<Integer, NotificationEntry>();
-
     private final ArrayList<NotificationListener> mListeners =
         new ArrayList<NotificationListener>();
 
@@ -47,11 +45,15 @@ public class NotificationCenter {
 
     private Context mContext;
     private NotificationEffect mEffect;
+    NotificationCenterInner mActives;
+    NotificationCenterInner mPendings;
 
     /* package */ NotificationCenter(Context context) {
         mContext = context;
         mH = new H(this);
         mEffect = new NotificationEffect(context);
+        mActives = new NotificationCenterInner();
+        mPendings = new NotificationCenterInner();
     }
 
     Context getContext() { return mContext; }
@@ -76,21 +78,27 @@ public class NotificationCenter {
     }
 
     void send(NotificationEntry entry) {
+        entry.requestSend();
         updateEntryState(entry);
     }
 
     void cancel(int entryId) {
-        NotificationEntry entry = getEntry(entryId);
-        if (entry != null) {
-            cancel(entry);
-        } else {
-            Log.e(TAG, "failed to get NotificationEntry for id=" + entryId);
+        if (mActives.cancel(entryId) || mPendings.cancel(entryId)) {
+            return;
         }
+        Log.e(TAG, "failed to get NotificationEntry for id=" + entryId);
+    }
+
+    void cancel(String tag) {
+        mActives.cancel(tag);
+        mPendings.cancel(tag);
     }
 
     void cancel(NotificationEntry entry) {
-        entry.cancel();
-        updateEntryState(entry);
+        if (mActives.cancel(entry)) {
+            return;
+        }
+        mPendings.cancel(entry);
     }
 
     void cancelAll() {
@@ -99,40 +107,235 @@ public class NotificationCenter {
         clearEntry(0);
     }
 
-    boolean hasEntries() {
-        return !mEntries.isEmpty();
+    boolean hasEntry(int id) {
+        return mActives.hasEntry(id) || mPendings.hasEntry(id);
     }
 
-    boolean hasEntry(Integer id) {
-        return mEntries.containsKey(id);
+    boolean hasEntry(int target, int id) {
+        return mActives.hasEntry(target, id) || mPendings.hasEntry(target, id);
+    }
+
+    boolean hasEntries() {
+        return mActives.hasEntries() || mPendings.hasEntries();
+    }
+
+    boolean hasEntries(int target) {
+        return hasEntries(target, null);
+    }
+
+    boolean hasEntries(String tag) {
+        return hasEntries(NotificationDelegater.MASK, tag);
+    }
+
+    boolean hasEntries(int target, String tag) {
+        return mActives.hasEntries(target, tag) || mPendings.hasEntries(target, tag);
+    }
+
+    NotificationEntry getEntry(int id) {
+        NotificationEntry entry = mActives.getEntry(id);
+        return entry != null ? entry : mPendings.getEntry(id);
+    }
+
+    NotificationEntry getEntry(int target, int id) {
+        NotificationEntry entry = mActives.getEntry(target, id);
+        return entry != null ? entry : mPendings.getEntry(target, id);
     }
 
     ArrayList<NotificationEntry> getEntries() {
-        return new ArrayList<NotificationEntry>(mEntries.values());
+        ArrayList<NotificationEntry> entries = new ArrayList<NotificationEntry>();
+        entries.addAll(mActives.getRawEntries());
+        entries.addAll(mPendings.getRawEntries());
+        return entries;
     }
 
-    NotificationEntry getEntry(Integer id) {
-        return mEntries.get(id);
+    ArrayList<NotificationEntry> getEntries(int target) {
+        return getEntries(target, null);
+    }
+
+    ArrayList<NotificationEntry> getEntries(String tag) {
+        return getEntries(NotificationDelegater.MASK, tag);
+    }
+
+    ArrayList<NotificationEntry> getEntries(int target, String tag) {
+        ArrayList<NotificationEntry> entries = getEntries();
+        Iterator<NotificationEntry> iter = entries.iterator();
+        while (iter.hasNext()) {
+            NotificationEntry entry = iter.next();
+            if ((tag != null && !tag.equals(entry.tag)) || !entry.isSentToTarget(target)) {
+                iter.remove();
+            }
+        }
+        return entries;
     }
 
     int getEntryCount() {
-        return mEntries.size();
+        return mActives.getEntryCount() + mPendings.getEntryCount();
     }
 
     int getEntryCount(int target) {
-        synchronized (mEntries) {
-            int count = 0;
-            Collection<NotificationEntry> entries = mEntries.values();
-            for (NotificationEntry entry : entries)
-                if (entry.isSentToTarget(target))
-                    count++;
-            return count;
+        return getEntryCount(target, null);
+    }
+
+    int getEntryCount(String tag) {
+        return getEntryCount(NotificationDelegater.MASK, tag);
+    }
+
+    int getEntryCount(int target, String tag) {
+        return mActives.getEntryCount(target, tag) + mPendings.getEntryCount(target, tag);
+    }
+
+    class NotificationCenterInner {
+
+        private final ArrayMap<Integer, NotificationEntry> mEntries =
+            new ArrayMap<Integer, NotificationEntry>();
+
+        private boolean cancel(int entryId) {
+            NotificationEntry entry = getEntry(entryId);
+            if (entry == null) {
+                return false;
+            }
+
+            entry.requestCancel();
+            updateEntryState(entry);
+            return true;
+        }
+
+        private void cancel(String tag) {
+            List<NotificationEntry> entries = getEntries(tag);
+            if (entries == null || entries.isEmpty()) {
+                Log.w(TAG, "no NotificationEntry found for tag=" + tag);
+                return;
+            }
+
+            for (NotificationEntry entry : entries) {
+                cancel(entry);
+            }
+        }
+
+        private boolean cancel(NotificationEntry entry) {
+            if (mEntries.containsKey(Integer.valueOf(entry.ID))) {
+                entry.requestCancel();
+                updateEntryState(entry);
+                return true;
+            }
+            return false;
+        }
+
+        void addEntry(int id, NotificationEntry entry) {
+            mEntries.put(Integer.valueOf(id), entry);
+        }
+
+        NotificationEntry removeEntry(int id) {
+            return mEntries.remove(Integer.valueOf(id));
+        }
+
+        void clearEntry() {
+            mEntries.clear();
+        }
+
+        boolean hasEntry(int id) {
+            return mEntries.containsKey(Integer.valueOf(id));
+        }
+
+        boolean hasEntry(int target, int id) {
+            NotificationEntry entry = mEntries.get(Integer.valueOf(id));
+            return entry != null && entry.isSentToTarget(target);
+        }
+
+        boolean hasEntries() {
+            return !mEntries.isEmpty();
+        }
+
+        boolean hasEntries(int target) {
+            return hasEntries(target, null);
+        }
+
+        boolean hasEntries(String tag) {
+            return hasEntries(NotificationDelegater.MASK, tag);
+        }
+
+        boolean hasEntries(int target, String tag) {
+            synchronized (mEntries) {
+                Collection<NotificationEntry> entries = mEntries.values();
+                for (NotificationEntry entry : entries) {
+                    if ((tag == null || tag.equals(entry.tag)) && entry.isSentToTarget(target)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        NotificationEntry getEntry(int id) {
+            return mEntries.get(Integer.valueOf(id));
+        }
+
+        NotificationEntry getEntry(int target, int id) {
+            NotificationEntry entry = mEntries.get(Integer.valueOf(id));
+            return entry != null && entry.isSentToTarget(target) ? entry : null;
+        }
+
+        ArrayList<NotificationEntry> getEntries() {
+            return new ArrayList<NotificationEntry>(mEntries.values());
+        }
+
+        ArrayList<NotificationEntry> getEntries(int target) {
+            return getEntries(target, null);
+        }
+
+        ArrayList<NotificationEntry> getEntries(String tag) {
+            return getEntries(NotificationDelegater.MASK, tag);
+        }
+
+        ArrayList<NotificationEntry> getEntries(int target, String tag) {
+            synchronized (mEntries) {
+                Collection<NotificationEntry> entries = mEntries.values();
+                ArrayList<NotificationEntry> ret = new ArrayList<NotificationEntry>();
+                for (NotificationEntry entry : entries) {
+                    if ((tag == null || tag.equals(entry.tag)) && entry.isSentToTarget(target)) {
+                        ret.add(entry);
+                    }
+                }
+                return ret;
+            }
+        }
+
+        Collection<NotificationEntry> getRawEntries() {
+            return mEntries.values();
+        }
+
+        int getEntryCount() {
+            return mEntries.size();
+        }
+
+        int getEntryCount(int target) {
+            return getEntryCount(target, null);
+        }
+
+        int getEntryCount(String tag) {
+            return getEntryCount(NotificationDelegater.MASK, tag);
+        }
+
+        int getEntryCount(int target, String tag) {
+            synchronized (mEntries) {
+                int count = 0;
+                Collection<NotificationEntry> entries = mEntries.values();
+                for (NotificationEntry entry : entries)
+                    if ((tag == null || tag.equals(entry.tag)) && entry.isSentToTarget(target))
+                        count++;
+                return count;
+            }
         }
     }
 
     private void onSendRequested(NotificationEntry entry) {
         for (NotificationHandler h : mHandlers)
             h.onSendRequested(entry);
+    }
+
+    private void onUpdateRequested(NotificationEntry entry) {
+        for (NotificationHandler h : mHandlers)
+            h.onUpdateRequested(entry);
     }
 
     private void onCancelRequested(NotificationEntry entry) {
@@ -145,17 +348,23 @@ public class NotificationCenter {
         addEntry(entry.ID, entry);
     }
 
+    private void onUpdateAsDefault(NotificationEntry entry) {
+        updateEntry(entry);
+    }
+
     private void playEffect(NotificationEntry entry) {
         synchronized (mEffect.mLock) {
             mEffect.play(entry);
         }
     }
 
-    private void addEntry(Integer id, NotificationEntry entry) {
-        synchronized (mEntries) {
-            if (!mEntries.containsKey(id)) {
+    private void addEntry(int id, NotificationEntry entry) {
+        synchronized (mActives) {
+            if (!mActives.hasEntry(id)) {
                 if (DBG) Log.v(TAG, "[entry:" + id + "] in - " + entry);
-                mEntries.put(id, entry);
+                mActives.addEntry(id, entry);
+                mPendings.removeEntry(id);
+                entry.mSent = true;
                 if (entry.mSendToListener) {
                     schedule(MSG_ARRIVAL, 0, 0, entry, 0);
                 }
@@ -163,10 +372,10 @@ public class NotificationCenter {
         }
     }
 
-    private void removeEntry(Integer id) {
-        synchronized (mEntries) {
-            if (mEntries.containsKey(id)) {
-                NotificationEntry entry = mEntries.remove(id);
+    private void removeEntry(int id) {
+        synchronized (mActives) {
+            if (mActives.hasEntry(id)) {
+                NotificationEntry entry = mActives.removeEntry(id);
                 if (DBG) Log.v(TAG, "[entry:" + id + "] out - " + entry);
                 if (entry.mSendToListener) {
                     schedule(MSG_CANCEL, 0, 0, entry, 0);
@@ -175,15 +384,23 @@ public class NotificationCenter {
         }
     }
 
+    private void updateEntry(NotificationEntry entry) {
+        if (entry.mSendToListener) {
+            schedule(MSG_UPDATE, 0, 0, entry, 0);
+        }
+    }
+
     /* package */ void clearEntry(int target) {
-        synchronized (mEntries) {
-            Collection<NotificationEntry> entries = mEntries.values();
+        synchronized (mActives) {
+            ArrayList<NotificationEntry> entries = getEntries();
             Iterator<NotificationEntry> iter = entries.iterator();
             while (iter.hasNext()) {
                 NotificationEntry entry = iter.next();
                 if (entry.mTargets == target) {
                     if (DBG) Log.v(TAG, "[entry:" + entry.ID + "] out - " + entry);
                     iter.remove();
+                    mActives.removeEntry(entry.ID);
+                    mPendings.removeEntry(entry.ID);
                     if (entry.mSendToListener) {
                         schedule(MSG_CANCEL, 0, 0, entry, 0);
                     }
@@ -210,10 +427,18 @@ public class NotificationCenter {
                 }
 
                 if ((diff & NotificationEntry.FLAG_REQUEST_SEND) != 0) {
+                    mPendings.addEntry(entry.ID, entry);
                     if (entry.mTargets == 0) {
                         onSendAsDefault(entry);
                     } else {
                         onSendRequested(entry);
+                    }
+                } if ((diff & NotificationEntry.FLAG_REQUEST_UPDATE) != 0) {
+                    entry.mFlag &= ~NotificationEntry.FLAG_REQUEST_UPDATE;
+                    if (entry.mTargets == 0) {
+                        onUpdateAsDefault(entry);
+                    } else {
+                        onUpdateRequested(entry);
                     }
                 } else if ((diff & NotificationEntry.FLAG_REQUEST_CANCEL) != 0) {
                     if (entry.mTargets == entry.mCancels) {
@@ -226,8 +451,13 @@ public class NotificationCenter {
                     addEntry(entry.ID, entry);
                 } else if ((diff & NotificationEntry.FLAG_SEND_IGNORED) != 0) {
                     entry.mFlag &= ~NotificationEntry.FLAG_SEND_IGNORED;
-                    if (entry.mTargets == 0) {
+                    if (entry.mTargets == entry.mIgnores) {
                         onSendAsDefault(entry);
+                    }
+                } else if ((diff & NotificationEntry.FLAG_UPDATE_FINISHED) != 0) {
+                    entry.mFlag &= ~NotificationEntry.FLAG_UPDATE_FINISHED;
+                    if (entry.mTargets == entry.mUpdates) {
+                        updateEntry(entry);
                     }
                 } else if ((diff & NotificationEntry.FLAG_CANCEL_FINISHED) != 0) {
                     entry.mFlag &= ~NotificationEntry.FLAG_CANCEL_FINISHED;
@@ -242,6 +472,7 @@ public class NotificationCenter {
 
     private static final int MSG_ARRIVAL = 0;
     private static final int MSG_CANCEL  = 1;
+    private static final int MSG_UPDATE  = 2;
     private final H mH;
 
     private void schedule(int what, int delay) {
@@ -265,18 +496,27 @@ public class NotificationCenter {
             NotificationCenter c = mCenter.get();
             if (c == null) return;
 
+            NotificationEntry entry = (NotificationEntry) msg.obj;
             switch (msg.what) {
             case MSG_ARRIVAL:
                 for (NotificationListener l : c.mListeners) {
-                    l.onArrival((NotificationEntry) msg.obj);
+                    l.onArrival(entry);
                 }
                 break;
 
             case MSG_CANCEL:
                 for (NotificationListener l : c.mListeners) {
-                    l.onCancel((NotificationEntry) msg.obj);
+                    l.onCancel(entry);
+                }
+                if (!entry.contentExecuted || !entry.autoCancel) {
+                    entry.executeCancelAction(c.mContext);
                 }
                 break;
+
+            case MSG_UPDATE:
+                for (NotificationListener l : c.mListeners) {
+                    l.onUpdate(entry);
+                }
             }
         }
     }

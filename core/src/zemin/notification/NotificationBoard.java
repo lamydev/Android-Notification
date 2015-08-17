@@ -42,6 +42,7 @@ import android.support.v4.view.GestureDetectorCompat;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
 
@@ -1431,6 +1432,8 @@ public class NotificationBoard extends FrameLayout
         return !mOpened || (mPrepareX && mDirection == X);
     }
 
+    private MotionEvent mDownEvent;
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
 
@@ -1730,6 +1733,14 @@ public class NotificationBoard extends FrameLayout
         }
     }
 
+    @Override
+    public void onUpdate(NotificationEntry entry) {
+        RowView rowView = getRowView(entry.ID);
+        if (rowView != null) {
+            updateRowView(rowView);
+        }
+    }
+
     private void show() {
         if (mCallback == null) {
             if (DBG) Log.v(TAG, "set default NotificationBoardCallback");
@@ -1757,7 +1768,7 @@ public class NotificationBoard extends FrameLayout
         mFooter.updateMargin();
         mFooter.updateDimension();
 
-        updateRowViews();
+        refreshRowViews();
         setVisibility(VISIBLE);
         onPrepare();
     }
@@ -1882,8 +1893,8 @@ public class NotificationBoard extends FrameLayout
         public final int notification;
 
         private NotificationEntry mEntry;
+        private ChildViewManager mChildViewManager;
         private float mDismissOnDragDistanceFarEnough;
-        private boolean mDismissOnClick = true;
         private boolean mCloseBoardOnClick = true;
 
         private final int[] mMargin = {
@@ -1900,8 +1911,11 @@ public class NotificationBoard extends FrameLayout
             setOnClickListener(mOnClickListenerRowView);
         }
 
-        public void setDismissOnClick(boolean dismiss) {
-            mDismissOnClick = dismiss;
+        public ChildViewManager getChildViewManager() {
+            if (mChildViewManager == null) {
+                mChildViewManager = new ChildViewManager();
+            }
+            return mChildViewManager;
         }
 
         public void setCloseBoardOnClick(boolean close) {
@@ -2106,17 +2120,13 @@ public class NotificationBoard extends FrameLayout
                 NotificationEntry entry = rowView.mEntry;
                 if (DBG) Log.v(TAG, "onClickRowView - " + rowView.notification);
 
-                if (rowView.mDismissOnClick && entry.autoCancel) {
+                entry.executeContentAction(mContext);
+                onClickRowView(rowView);
+                if (entry.autoCancel) {
                     rowView.dismiss(false);
                 }
-
                 if (rowView.mCloseBoardOnClick) {
                     animateClose();
-                }
-
-                onClickRowView(rowView);
-                if (entry.onClickListener != null) {
-                    entry.onClickListener.onClick(view);
                 }
             }
         };
@@ -2152,6 +2162,12 @@ public class NotificationBoard extends FrameLayout
         mContainer.addView(rowView, 0, rowView.makeLayoutParams());
         mCallback.onRowViewAdded(this, rowView, entry);
         removePendingArrive(entry);
+        updateRowView(rowView);
+    }
+
+    private void updateRowView(RowView rowView) {
+        if (DBG) Log.v(TAG, "updateRowView - " + rowView.notification);
+        mCallback.onRowViewUpdate(this, rowView, rowView.mEntry);
     }
 
     private void removeRowView(NotificationEntry entry) {
@@ -2193,13 +2209,13 @@ public class NotificationBoard extends FrameLayout
         }
     }
 
-    private void updateRowViews() {
+    private void refreshRowViews() {
         synchronized (mLock) {
-            final int count = mCenter.getEntryCount();
+            final int count = mCenter.mActives.getEntryCount();
             final int childCount = mContainer.getChildCount();
-            if (DBG) Log.v(TAG, "updateRowViews - old: " + childCount + ", new: " + count);
+            if (DBG) Log.v(TAG, "refreshRowViews - old: " + childCount + ", new: " + count);
             if (count != childCount) {
-                ArrayList<NotificationEntry> entries = mCenter.getEntries();
+                ArrayList<NotificationEntry> entries = mCenter.mActives.getEntries();
                 ArrayList<RowView> toRemove = null;
                 for (int i = 0; i < childCount; i++) {
                     RowView rowView = (RowView) mContainer.getChildAt(i);
@@ -2304,7 +2320,7 @@ public class NotificationBoard extends FrameLayout
 
     private void onEndOpen() {
         mOpened = true;
-        updateRowViews();
+        refreshRowViews();
         updatePendings();
         mContentView.setTranslationY(0.0f);
 

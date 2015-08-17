@@ -22,6 +22,8 @@ import android.os.Message;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.List;
+
 /**
  * Parent class of {@link NotificationLocal}, {@link NotificationGlobal} and {@link NotificationRemote}.
  */
@@ -57,6 +59,9 @@ public class NotificationHandler extends Handler {
     }
 
     protected void onCancelAll() {
+    }
+
+    protected void onUpdate(NotificationEntry entry) {
     }
 
     /**
@@ -128,13 +133,71 @@ public class NotificationHandler extends Handler {
     }
 
     /**
+     * Whether the notification with id exists.
+     *
+     * @param entryId
+     * @return boolean
+     */
+    public boolean hasNotification(int entryId) {
+        return mCenter.hasEntry(ID, entryId);
+    }
+
+    /**
+     * Whether the notifications with tag exist.
+     *
+     * @param tag
+     * @return boolean
+     */
+    public boolean hasNotifications(String tag) {
+        return mCenter.hasEntries(ID, tag);
+    }
+
+    /**
+     * Whether any notifications exist.
+     *
+     * @return boolean
+     */
+    public boolean hasNotifications() {
+        return mCenter.hasEntries(ID);
+    }
+
+    /**
      * Get notification by its id.
      *
      * @param entryId
      * @return NotificationEntry
      */
-    public NotificationEntry getEntry(int entryId) {
-        return mCenter.getEntry(entryId);
+    public NotificationEntry getNotification(int entryId) {
+        return mCenter.getEntry(ID, entryId);
+    }
+
+    /**
+     * Get notifications by its tag.
+     *
+     * @param tag
+     * @param List
+     */
+    public List<NotificationEntry> getNotifications(String tag) {
+        return mCenter.getEntries(ID, tag);
+    }
+
+    /**
+     * Get notifications.
+     *
+     * @return List
+     */
+    public List<NotificationEntry> getNotifications() {
+        return mCenter.mActives.getEntries(ID);
+    }
+
+    /**
+     * Get notification count.
+     *
+     * @param tag
+     * @return int
+     */
+    public int getNotificationCount(String tag) {
+        return mCenter.mActives.getEntryCount(ID, tag);
     }
 
     /**
@@ -143,7 +206,7 @@ public class NotificationHandler extends Handler {
      * @return int
      */
     public int getNotificationCount() {
-        return mCenter.getEntryCount(ID);
+        return mCenter.mActives.getEntryCount(ID);
     }
 
     /**
@@ -153,10 +216,10 @@ public class NotificationHandler extends Handler {
      */
     public void send(NotificationEntry entry) {
         if (entry.isSentToTarget(ID)) {
-            final int targets = entry.mTargets;
-            entry.mTargets = ID;
-            updateEntryState(entry);
-            entry.mTargets = targets;
+            // final int targets = entry.mTargets;
+            // entry.mTargets = ID;
+            mCenter.send(entry);
+            // entry.mTargets = targets;
         }
     }
 
@@ -166,9 +229,23 @@ public class NotificationHandler extends Handler {
      * @param entryId
      */
     public void cancel(int entryId) {
-        NotificationEntry entry = mCenter.getEntry(entryId);
+        NotificationEntry entry = mCenter.getEntry(ID, entryId);
         if (entry != null) {
             cancel(entry);
+        }
+    }
+
+    /**
+     * Cancel notifications by its tag.
+     *
+     * @param tag
+     */
+    public void cancel(String tag) {
+        List<NotificationEntry> entries = mCenter.getEntries(ID, tag);
+        if (entries != null && !entries.isEmpty()) {
+            for (NotificationEntry entry : entries) {
+                cancel(entry);
+            }
         }
     }
 
@@ -179,11 +256,10 @@ public class NotificationHandler extends Handler {
      */
     public void cancel(NotificationEntry entry) {
         if (entry.isSentToTarget(ID)) {
-            final int targets = entry.mTargets;
-            entry.mTargets = ID;
-            entry.cancel();
-            updateEntryState(entry);
-            entry.mTargets = targets;
+            // final int targets = entry.mTargets;
+            // entry.mTargets = ID;
+            mCenter.cancel(entry);
+            // entry.mTargets = targets;
         }
     }
 
@@ -213,6 +289,18 @@ public class NotificationHandler extends Handler {
         }
     }
 
+    void onUpdateRequested(NotificationEntry entry) {
+        if (entry.isSentToTarget(ID)) {
+            if (mEnabled) {
+                if (DBG) Log.v(TAG, "prepare to update - " + entry.ID);
+                entry.mEffectConsumers |= ID;
+                schedule(UPDATE, 0, 0, entry, entry.delay);
+            } else {
+                onUpdateIgnored(entry);
+            }
+        }
+    }
+
     void onCancelRequested(NotificationEntry entry) {
         if (entry.isSentToTarget(ID) && !entry.isCanceled(ID)) {
             if (DBG) Log.v(TAG, "prepare to cancel - " + entry.ID);
@@ -221,28 +309,41 @@ public class NotificationHandler extends Handler {
     }
 
     void onSendFinished(NotificationEntry entry) {
-        if (DBG) Log.v(TAG, "send - " + entry.ID);
-        synchronized (mEffect.mLock) {
-            if (mEffectEnabled) {
-                if ((entry.mEffectConsumers & ID) != 0) {
-                    entry.mEffectConsumers = ID;
-                    mEffect.setConsumer(ID);
-                    mEffect.play(entry);
-                }
-            } else {
-                entry.mEffectConsumers &= ~ID;
-            }
+        if (!entry.mSent) {
+            if (DBG) Log.v(TAG, "send - " + entry.ID);
+            playEffect(entry);
+            entry.mFlag |= NotificationEntry.FLAG_SEND_FINISHED;
+            updateEntryState(entry);
         }
-        entry.mFlag |= NotificationEntry.FLAG_SEND_FINISHED;
-        updateEntryState(entry);
+        if (entry.mUpdate) {
+            onUpdateFinished(entry);
+        }
     }
 
     void onSendIgnored(NotificationEntry entry) {
-        if (DBG) Log.v(TAG, "ignore - " + entry.ID);
-        entry.mEffectConsumers &= ~ID;
-        entry.mFlag |= NotificationEntry.FLAG_SEND_IGNORED;
-        entry.sendToTarget(false, ID);
+        if (!entry.mSent) {
+            if (DBG) Log.v(TAG, "ignore - " + entry.ID);
+            entry.mEffectConsumers &= ~ID;
+            entry.mFlag |= NotificationEntry.FLAG_SEND_IGNORED;
+            entry.mIgnores |= ID;
+            updateEntryState(entry);
+        }
+        if (entry.mUpdate) {
+            onUpdateIgnored(entry);
+        }
+    }
+
+    void onUpdateFinished(NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "update - " + entry.ID);
+        playEffect(entry);
+        entry.mFlag |= NotificationEntry.FLAG_UPDATE_FINISHED;
+        entry.mUpdates |= ID;
         updateEntryState(entry);
+    }
+
+    void onUpdateIgnored(NotificationEntry entry) {
+        if (DBG) Log.v(TAG, "ignore update - " + entry.ID);
+        entry.mUpdates |= ID;
     }
 
     void onCancelFinished(NotificationEntry entry) {
@@ -256,6 +357,20 @@ public class NotificationHandler extends Handler {
         mCenter.clearEntry(ID);
     }
 
+    private void playEffect(NotificationEntry entry) {
+        synchronized (mEffect.mLock) {
+            if (mEffectEnabled) {
+                if ((entry.mEffectConsumers & ID) != 0) {
+                    entry.mEffectConsumers = ID;
+                    mEffect.setConsumer(ID);
+                    mEffect.play(entry);
+                }
+            } else {
+                entry.mEffectConsumers &= ~ID;
+            }
+        }
+    }
+
     private void updateEntryState(NotificationEntry entry) {
         mCenter.updateEntryState(entry);
     }
@@ -263,6 +378,7 @@ public class NotificationHandler extends Handler {
     protected static final int ARRIVE = 0;
     protected static final int CANCEL = 1;
     protected static final int CANCEL_ALL = 2;
+    protected static final int UPDATE = 3;
 
     protected void cancelSchedule(int what) {
         removeMessages(what);
@@ -291,6 +407,12 @@ public class NotificationHandler extends Handler {
         onCancelAll();
     }
 
+    protected void dispatchOnUpdate(NotificationEntry entry) {
+        updateEntryState(entry);
+        onUpdate(entry);
+        updateEntryState(entry);
+    }
+
     @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
@@ -302,6 +424,9 @@ public class NotificationHandler extends Handler {
             break;
         case CANCEL_ALL:
             dispatchOnCancelAll();
+            break;
+        case UPDATE:
+            dispatchOnUpdate((NotificationEntry) msg.obj);
             break;
         }
     }
