@@ -96,6 +96,10 @@ public class MainActivity extends ActionBarActivity {
             public void onCancel(NotificationEntry entry) {
                 updateNotificationCount(entry);
             }
+
+            @Override
+            public void onUpdate(NotificationEntry entry) {
+            }
         };
 
     private void updateNotificationCount(NotificationEntry entry) {
@@ -124,6 +128,7 @@ public class MainActivity extends ActionBarActivity {
                         .setSmallIconResource(R.drawable.ic_launcher)
                         .setTicker(title + ": " + text)
                         .setTitle(title)
+                        .addAction(zemin.notification.R.drawable.clear_button, "yes", null, null)
                         .setText(text);
 
                     mDelegater.send(builder.getNotification());
@@ -142,6 +147,8 @@ public class MainActivity extends ActionBarActivity {
                         .setBackgroundColor(getNextColor())
                         .setLayoutId(getNextLayout())
                         .setIconDrawable(getResources().getDrawable(R.drawable.ic_launcher))
+                        .addAction(R.drawable.android_gray, "gray", null)
+                        .addAction(R.drawable.android_gray, "android", null)
                         .setTitle(getNextTitle())
                         .setText(getNextText());
 
