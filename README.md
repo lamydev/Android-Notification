@@ -60,7 +60,7 @@ declare the following dependency to your `build.gradle`.
 
 ``` xml
 dependencies {
-    compile 'com.github.lamydev:android-notification:2.0'
+    compile 'com.github.lamydev:android-notification:3.0'
 }
 ```
 
